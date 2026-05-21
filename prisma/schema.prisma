@@ -1,0 +1,52 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Вложенный объект для опций печати (шелкография / флексо)
+type PrintOption {
+  code     String
+  quantity Int
+  price    Float
+}
+
+// Вложенный объект для прогрессивной цены в зависимости от объема (опт)
+type PriceTier {
+  minQty Int
+  price  Float
+}
+
+model Product {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  category     String
+  subcategory  String?
+  currency     String
+  price        PriceTier[]   // Наша сетка цен [ {minQty: 100, price: 5}, ... ]
+  description  String        @default("")
+  tags         String[]      @default([])
+  type         String?
+  weight       String?
+  color        String
+  appMethod    String?       // Метод нанесения (печать)
+  material     String?       // Крафт, полиэтилен и т.д.
+  bottom       Boolean?      // Наличие дна/складки
+  handle       Boolean?      // Ручки
+  handleColor  String?
+  density      String?       // Плотность (мкм / г/м2)
+  size         String
+  docsPocket   Boolean?      // Карман для документов
+  stickyAss    Boolean?      // Клейкая лента / клапан 
+  window       Boolean?      // Прозрачное окно
+  zipLock      Boolean?      // Зип-лок
+  images       String[]
+  printOptions PrintOption[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("products") // Убедись, что название коллекции в монге совпадает (обычно во множественном числе)
+}
