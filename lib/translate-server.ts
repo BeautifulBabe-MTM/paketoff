@@ -1,35 +1,52 @@
 import { unstable_cache } from 'next/cache';
 
-// 1. Глубокий кэшируемый перевод одной строки с защитой от сбоев API
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const translateString = unstable_cache(
   async (text: string, targetLang: string): Promise<string> => {
-    if (!text || targetLang === 'uk') return text;
+    // Если строка пустая, состоит из пробелов или язык украинский — не переводим
+    if (!text || !text.trim() || targetLang === 'uk') return text;
     
     try {
-      const res = await fetch(
-        `https://lingva.ml/api/v1/uk/${targetLang}/${encodeURIComponent(text)}`,
-        {
-          signal: AbortSignal.timeout(3000) // Таймаут 3 секунды
-        }
-      );
+      await delay(60); // Чуть увеличим паузу, чтобы не спамить
+
+      // Альтернативный endpoint Гугла, который стабильнее жрёт текстовые строки
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=uk&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.trim())}`;
+      
+      const res = await fetch(url, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+        headers: {
+          // Имитируем чистый запрос от старого браузера, это обходит блок 500
+          'Accept': '*/*',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        },
+        next: { revalidate: 86400 } // Дополнительное кэширование на уровне fetch
+      });
 
       if (!res.ok) {
-        console.warn(`[Lingva API] Ошибка сервера: ${res.status}. Фолбэк на оригинал.`);
+        // Если опять 500 или 403 — выводим в консоль, но сайт не вешаем
+        console.warn(`[Google API Error] Статус: ${res.status}. Текст: "${text.slice(0, 15)}..."`);
         return text;
       }
 
       const json = await res.json();
-      return json.translation || text;
+      
+      if (json && json[0] && json[0][0] && json[0][0][0]) {
+        return json[0][0][0];
+      }
+      
+      return text;
     } catch (e) {
-      console.error(`[Translate Error] Ошибка перевода для "${text.slice(0, 20)}...":`, e);
+      console.warn(`[Fetch Catch] Ошибка для "${text.slice(0, 15)}...":`, e instanceof Error ? e.message : e);
       return text;
     }
   },
   ['string-translations-cache'],
-  { revalidate: 86400 } // Кэш на 24 часа
+  { revalidate: 86400 }
 );
 
-// 2. Универсальный переводчик одиночного объекта (товара)
+// Логика перевода товара (остаётся без изменений)
 export async function translateProduct<T extends Record<string, any>>(product: T, locale: string): Promise<T> {
   if (locale === 'uk' || !product) return product;
 
@@ -38,9 +55,13 @@ export async function translateProduct<T extends Record<string, any>>(product: T
   const description = product.description ? await translateString(product.description, locale) : product.description;
   const category = product.category ? await translateString(product.category, locale) : product.category;
   
-  const tags = product.tags && Array.isArray(product.tags)
-    ? await Promise.all(product.tags.map((tag: string) => translateString(tag, locale)))
-    : product.tags;
+  const tags: string[] = [];
+  if (product.tags && Array.isArray(product.tags)) {
+    for (const tag of product.tags) {
+      const translatedTag = await translateString(tag, locale);
+      tags.push(translatedTag);
+    }
+  }
 
   return {
     ...product,
@@ -48,12 +69,17 @@ export async function translateProduct<T extends Record<string, any>>(product: T
     title,
     description,
     category,
-    tags
+    tags: product.tags ? tags : product.tags
   };
 }
 
-// 3. Переводчик МАССИВОВ (вот то, что потерялось)
 export async function translateProductsList<T extends Record<string, any>>(products: T[], locale: string): Promise<T[]> {
   if (locale === 'uk' || !products || !products.length) return products;
-  return Promise.all(products.map(item => translateProduct(item, locale)));
+  
+  const translatedList: T[] = [];
+  for (const item of products) {
+    const translatedItem = await translateProduct(item, locale);
+    translatedList.push(translatedItem);
+  }
+  return translatedList;
 }
