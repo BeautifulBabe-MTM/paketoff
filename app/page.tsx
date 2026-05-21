@@ -8,9 +8,6 @@ import ThemeToggle from '@/components/ThemeToggle'
 export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black flex flex-col justify-center items-center px-4">
-      
-      <ThemeToggle />
-
       <main className="max-w-xl text-center space-y-6">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}

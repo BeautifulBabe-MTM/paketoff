@@ -41,9 +41,6 @@ export default async function ProductPage({ params }: Props) {
     <main className="min-h-screen bg-zinc-50 text-zinc-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100 pt-28 pb-24 px-4 md:px-8 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
       <div className="max-w-6xl mx-auto">
         
-        {/* Кнопка смены темы */}
-        <ThemeToggle />
-        
         {/* Кнопка назад — адаптирована под оба режима */}
         <Link 
           href="/packs" 
