@@ -28,6 +28,7 @@ interface ProductConfiguratorProps {
     images: string[]
     price: PriceTier[]
     printOptions: PrintOption[]
+    tags?: string[] // Добавили опциональное поле tags, если оно прилетает из БД
   }
 }
 
@@ -43,12 +44,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
   const [totalPrice, setTotalPrice] = useState<number>(0)
 
   useEffect(() => {
-    // 1. Расчет базовой цены пакета без печати
-    const sortedProductTiers = [...product.price].sort((a, b) => b.minQty - a.minQty)
-    const matchingProductTier = sortedProductTiers.find(tier => quantity >= tier.minQty) || product.price[0]
+    // Безопасная проверка на случай, если массив цен пустой или не пришел
+    const productPrices = product.price || []
+    const sortedProductTiers = [...productPrices].sort((a, b) => b.minQty - a.minQty)
+    const matchingProductTier = sortedProductTiers.find(tier => quantity >= tier.minQty) || productPrices[0]
     let currentBasePrice = matchingProductTier ? matchingProductTier.price : 0
 
-    // 2. Расчет цены печати под конкретный тираж
     let currentPrintPrice = 0
     if (selectedPrint !== 'Без друку' && product.printOptions) {
       const validOptions = product.printOptions.filter(opt => opt.code === selectedPrint)
@@ -70,7 +71,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-      
+
       {/* ЛЕВАЯ СТОРОНА: Фото и ТТХ */}
       <div className="lg:col-span-5 space-y-4">
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-zinc-100 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800/80">
@@ -79,7 +80,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               src={product.images[0]}
               alt={product.name}
               fill
-              priority
+              priority // Говорим Next.js загружать картинку мгновенно (решает проблему LCP)
+              unoptimized // Защищает Turbopack от падений при работе с внешними URL картинок
               className="object-cover opacity-95"
             />
           ) : (
@@ -88,16 +90,15 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             </div>
           )}
         </div>
-        
-        {/* Карточки характеристик адаптированы под светлую/темную тему */}
+
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           <div className="bg-zinc-100/70 border border-zinc-200 p-3 rounded-lg dark:bg-zinc-900/40 dark:border-zinc-800/60">
-            <span className="block text-zinc-400 dark:text-zinc-600 mb-1">РАЗМЕР:</span>
+            <span className="block text-zinc-400 dark:text-zinc-600 mb-1">РОЗМІР:</span>
             <span className="text-zinc-800 dark:text-zinc-200 font-bold">{product.size}</span>
           </div>
           {product.density && (
             <div className="bg-zinc-100/70 border border-zinc-200 p-3 rounded-lg dark:bg-zinc-900/40 dark:border-zinc-800/60">
-              <span className="block text-zinc-400 dark:text-zinc-600 mb-1">ПЛОТНОСТЬ:</span>
+              <span className="block text-zinc-400 dark:text-zinc-600 mb-1">ЩІЛЬНІСТЬ:</span>
               <span className="text-zinc-800 dark:text-zinc-200 font-bold">{product.density}</span>
             </div>
           )}
@@ -106,7 +107,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
       {/* ПРАВАЯ СТОРОНА: Калькулятор */}
       <div className="lg:col-span-7 space-y-8">
-        
+
         {/* Категория и Название */}
         <div className="space-y-2">
           <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
@@ -131,12 +132,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
           </label>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             <button
+              type="button"
               onClick={() => setSelectedPrint('Без друку')}
-              className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${
-                selectedPrint === 'Без друку'
+              className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${selectedPrint === 'Без друку'
                   ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
                   : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
-              }`}
+                }`}
             >
               Без друку
             </button>
@@ -144,12 +145,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             {uniquePrintCodes.map((code) => (
               <button
                 key={code}
+                type="button"
                 onClick={() => setSelectedPrint(code)}
-                className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${
-                  selectedPrint === code
+                className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${selectedPrint === code
                     ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
                     : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
-                }`}
+                  }`}
               >
                 {code}
               </button>
@@ -185,7 +186,10 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             </div>
           </div>
 
-          <button className="w-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-sm uppercase tracking-wider py-4 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] transition-all">
+          <button
+            type="button"
+            className="w-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-sm uppercase tracking-wider py-4 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] transition-all"
+          >
             Додати в кошик
           </button>
         </div>

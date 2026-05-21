@@ -19,18 +19,23 @@ export const metadata: Metadata = {
   description: "Premium Digital Packs Marketplace",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
+interface RootLayoutProps {
   children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
+  params: Promise<{ locale: string }>;
+}
 
+export default async function RootLayout({
+  children,
+  params,
+}: RootLayoutProps) {
+  const { locale } = await params;
+
+  return (
+    <html lang={locale} suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark" // По умолчанию сайт откроется в темной теме
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
           enableColorScheme={false}
