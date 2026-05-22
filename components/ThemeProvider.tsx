@@ -18,20 +18,36 @@ export function ThemeProvider({
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
-    // 1. При монтировании в браузере проверяем, есть ли уже сохраненная тема
-    const savedTheme = localStorage.getItem('theme') || defaultTheme
-    
-    // 2. Вручную вешаем/убираем класс dark на самый верхний тег HTML
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+    // Функция, которая физически переключает классы на теге HTML
+    const applyTheme = (theme: string) => {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = 'dark'
+      } else {
+        document.documentElement.classList.remove('dark')
+        document.documentElement.style.colorScheme = 'light'
+      }
     }
-    
+
+    // 1. При первом старте берём тему из localStorage или ставим дефолт
+    const savedTheme = localStorage.getItem('theme') || defaultTheme
+    applyTheme(savedTheme)
     setMounted(true)
+
+    // 2. Слушаем событие изменения темы от нашей кнопки
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ theme: string }>
+      applyTheme(customEvent.detail.theme)
+    }
+
+    window.addEventListener('themeChanged', handleThemeChange)
+    
+    return () => {
+      window.removeEventListener('themeChanged', handleThemeChange)
+    }
   }, [defaultTheme])
 
-  // Пока сервер рендерит — просто отдаем детей, чтобы HTML был чистым
+  // Пока сервер рендерит — отдаём чистый HTML, чтобы не было ошибок гидратации
   if (!mounted) {
     return <>{children}</>
   }
