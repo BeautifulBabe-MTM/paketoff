@@ -15,6 +15,17 @@ interface PrintOption {
   price: number
 }
 
+// Описываем типы для наших серверных переводов
+interface ConfiguratorTranslations {
+  sizeLabel: string
+  densityLabel: string
+  printLabel: string
+  noPrintBtn: string
+  qtyLabel: string
+  pricePerUnitLabel: string
+  addToCartBtn: string
+}
+
 interface ProductConfiguratorProps {
   product: {
     id: string
@@ -28,23 +39,23 @@ interface ProductConfiguratorProps {
     images: string[]
     price: PriceTier[]
     printOptions: PrintOption[]
-    tags?: string[] // Добавили опциональное поле tags, если оно прилетает из БД
+    tags?: string[]
   }
+  translations: ConfiguratorTranslations // <--- ПРИНИМАЕМ ГОТОВЫЙ ПЕРЕВОД
 }
 
-export default function ProductConfigurator({ product }: ProductConfiguratorProps) {
-  // Фильтруем коды жестко, чтобы убрать дубликаты кнопок
+export default function ProductConfigurator({ product, translations }: ProductConfiguratorProps) {
   const uniquePrintCodes = Array.from(
     new Set((product.printOptions || []).map((opt) => opt.code))
   ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 
+  // Системное состояние оставляем на 'Без друку', чтобы расчеты не ломались
   const [selectedPrint, setSelectedPrint] = useState<string>('Без друку')
   const [quantity, setQuantity] = useState<number>(100)
   const [pricePerUnit, setPricePerUnit] = useState<number>(0)
   const [totalPrice, setTotalPrice] = useState<number>(0)
 
   useEffect(() => {
-    // Безопасная проверка на случай, если массив цен пустой или не пришел
     const productPrices = product.price || []
     const sortedProductTiers = [...productPrices].sort((a, b) => b.minQty - a.minQty)
     const matchingProductTier = sortedProductTiers.find(tier => quantity >= tier.minQty) || productPrices[0]
@@ -61,7 +72,6 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
       }
     }
 
-    // 3. Итог
     const finalPricePerUnit = currentBasePrice + currentPrintPrice
     setPricePerUnit(finalPricePerUnit)
     setTotalPrice(finalPricePerUnit * quantity)
@@ -80,8 +90,8 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
               src={product.images[0]}
               alt={product.name}
               fill
-              priority // Говорим Next.js загружать картинку мгновенно (решает проблему LCP)
-              unoptimized // Защищает Turbopack от падений при работе с внешними URL картинок
+              priority
+              unoptimized
               className="object-cover opacity-95"
             />
           ) : (
@@ -93,12 +103,12 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
 
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           <div className="bg-zinc-100/70 border border-zinc-200 p-3 rounded-lg dark:bg-zinc-900/40 dark:border-zinc-800/60">
-            <span className="block text-zinc-400 dark:text-zinc-600 mb-1">РОЗМІР:</span>
+            <span className="block text-zinc-400 dark:text-zinc-600 mb-1">{translations.sizeLabel}</span>
             <span className="text-zinc-800 dark:text-zinc-200 font-bold">{product.size}</span>
           </div>
           {product.density && (
             <div className="bg-zinc-100/70 border border-zinc-200 p-3 rounded-lg dark:bg-zinc-900/40 dark:border-zinc-800/60">
-              <span className="block text-zinc-400 dark:text-zinc-600 mb-1">ЩІЛЬНІСТЬ:</span>
+              <span className="block text-zinc-400 dark:text-zinc-600 mb-1">{translations.densityLabel}</span>
               <span className="text-zinc-800 dark:text-zinc-200 font-bold">{product.density}</span>
             </div>
           )}
@@ -128,7 +138,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         {/* ВЫБОР ВАРИАНТА ДРУКУ */}
         <div className="space-y-3">
           <label className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
-            Виберіть варіант друку:
+            {translations.printLabel}
           </label>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             <button
@@ -139,7 +149,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
                   : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
                 }`}
             >
-              Без друку
+              {translations.noPrintBtn} {/* Кнопка "Без печати" на нужном языке */}
             </button>
 
             {uniquePrintCodes.map((code) => (
@@ -161,7 +171,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         {/* ИНПУТ КОЛИЧЕСТВА */}
         <div className="space-y-3 max-w-[240px]">
           <label className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
-            Кількість (шт.):
+            {translations.qtyLabel}
           </label>
           <div className="relative">
             <input
@@ -179,7 +189,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
         <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
           <div className="space-y-1">
             <div className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase">
-              Ціна за штуку: <span className="text-zinc-700 dark:text-zinc-300 font-bold font-mono">{pricePerUnit.toFixed(2)} {currencySign}</span>
+              {translations.pricePerUnitLabel} <span className="text-zinc-700 dark:text-zinc-300 font-bold font-mono">{pricePerUnit.toFixed(2)} {currencySign}</span>
             </div>
             <div className="text-2xl font-mono font-black text-zinc-900 dark:text-white tracking-tight">
               {totalPrice.toLocaleString('ru-RU', { minimumFractionDigits: 2 })} <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">{currencySign}</span>
@@ -190,7 +200,7 @@ export default function ProductConfigurator({ product }: ProductConfiguratorProp
             type="button"
             className="w-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-sm uppercase tracking-wider py-4 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] transition-all"
           >
-            Додати в кошик
+            {translations.addToCartBtn}
           </button>
         </div>
 

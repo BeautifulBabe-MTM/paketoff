@@ -2,33 +2,37 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import { SlidersHorizontal, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react'
 
-interface Product {
-    id: string
-    name: string
-    category: string
-    subcategory?: string | null
-    currency: string
-    size: string              // "20х30см"
-    color?: string | null     // "Білий"
-    density?: string | null   // "60мкм"
-    bottom?: boolean | string | null // Донна складка (может быть false или строкой)
-    handle?: boolean | string | null // Посилена ручка (может быть false или строкой)
-    weight?: string | null    // "до 2 кг" (Витримає вагу)
-    images: string[]
-    price: { minQty: number; price: number }[]
-    createdAt: Date
-}
-
 interface CatalogFiltersProps {
-  initialProducts: any[] // или твой тип продукта
-  categories: { id: string; label: string }[] // <--- МЕНЯЕМ ТУТ
+  initialProducts: any[]
+  categories: { id: string; label: string }[]
   currentCategory: string | null
+  translations: {
+    pageTitle: string // <--- Добавили заголовок
+    allProductsBtn: string
+    allSubcategoriesBtn: string
+    foundProductsLabel: string
+    filterParamsTitle: string
+    noProductsText: string
+    yesLabel: string
+    noLabel: string
+    sections: {
+      size: string
+      color: string
+      density: string
+      bottom: string
+      handle: string
+      weight: string
+    }
+  }
 }
 
-export default function CatalogFilters({ initialProducts, categories, currentCategory }: CatalogFiltersProps) {
+export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
+    const { locale } = useParams()
+
     const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null)
     const [selectedSizes, setSelectedSizes] = useState<string[]>([])
     const [selectedColors, setSelectedColors] = useState<string[]>([])
@@ -61,12 +65,12 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
             if (p.density && p.density.trim() !== '') densities.add(p.density.trim())
             if (p.weight && p.weight.trim() !== '') weights.add(p.weight.trim())
 
-            if (p.bottom === true) bottoms.add('Є')
-            else if (p.bottom === false) bottoms.add('Немає')
+            if (p.bottom === true) bottoms.add(translations.yesLabel)
+            else if (p.bottom === false) bottoms.add(translations.noLabel)
             else if (typeof p.bottom === 'string' && p.bottom.trim() !== '') bottoms.add(p.bottom.trim())
 
-            if (p.handle === true) handles.add('Є')
-            else if (p.handle === false) handles.add('Немає')
+            if (p.handle === true) handles.add(translations.yesLabel)
+            else if (p.handle === false) handles.add(translations.noLabel)
             else if (typeof p.handle === 'string' && p.handle.trim() !== '') handles.add(p.handle.trim())
         })
 
@@ -79,7 +83,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
             handles: Array.from(handles),
             weights: Array.from(weights),
         }
-    }, [initialProducts])
+    }, [initialProducts, translations])
 
     useMemo(() => {
         setSelectedSubcat(null)
@@ -108,22 +112,22 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
             if (selectedWeights.length > 0 && (!p.weight || !selectedWeights.includes(p.weight))) return false
 
             if (selectedBottoms.length > 0) {
-                let itemValue = 'Немає'
-                if (p.bottom === true) itemValue = 'Є'
+                let itemValue = translations.noLabel
+                if (p.bottom === true) itemValue = translations.yesLabel
                 else if (typeof p.bottom === 'string') itemValue = p.bottom
                 if (!selectedBottoms.includes(itemValue)) return false
             }
 
             if (selectedHandles.length > 0) {
-                let itemValue = 'Немає'
-                if (p.handle === true) itemValue = 'Є'
+                let itemValue = translations.noLabel
+                if (p.handle === true) itemValue = translations.yesLabel
                 else if (typeof p.handle === 'string') itemValue = p.handle
                 if (!selectedHandles.includes(itemValue)) return false
             }
 
             return true
         })
-    }, [initialProducts, selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights])
+    }, [initialProducts, selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights, translations])
 
     return (
         <>
@@ -133,30 +137,31 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                         B2B / B2C Production Database
                     </div>
+                    {/* Исправлено: Заголовок теперь переводится */}
                     <h1 className="text-4xl md:text-6xl font-black tracking-tight uppercase font-sans text-zinc-900 dark:text-white">
-                        Пакети & Упаковка
+                        {translations.pageTitle}
                     </h1>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
-                    <span>ЗНАЙДЕНО ТОВАРІВ: <strong className="text-zinc-900 dark:text-white font-semibold">{filteredProducts.length}</strong></span>
+                    <span>{translations.foundProductsLabel} <strong className="text-zinc-900 dark:text-white font-semibold">{filteredProducts.length}</strong></span>
                 </div>
             </header>
 
             <section className="mb-6">
                 <div className="flex flex-wrap gap-2 pb-4 border-b border-zinc-100 dark:border-zinc-950">
                     <Link
-                        href="/packs"
+                        href={`/${locale}/packs`}
                         className={`px-4 py-2 text-xs font-medium tracking-wide uppercase rounded-lg transition-all ${!currentCategory
                             ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold'
                             : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-400'
                             }`}
                     >
-                        Усі види продукції
+                        {translations.allProductsBtn}
                     </Link>
                     {categories.map(cat => (
                         <Link
                             key={cat.id}
-                            href={`/packs?category=${encodeURIComponent(cat.id)}`}
+                            href={`/${locale}/packs?category=${encodeURIComponent(cat.id)}`}
                             className={`px-4 py-2 text-xs font-medium tracking-wide uppercase rounded-lg border transition-all ${currentCategory === cat.id
                                 ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold'
                                 : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-400'
@@ -178,7 +183,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                                 : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
                                 }`}
                         >
-                            Усі підкатегорії
+                            {translations.allSubcategoriesBtn} {/* Исправлено тут */}
                         </button>
                         {facets.subcategories.map(sub => (
                             <button
@@ -201,16 +206,16 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                 <aside className="space-y-1 bg-white dark:bg-transparent border border-zinc-200 dark:border-transparent rounded-xl p-4 lg:p-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 uppercase tracking-wider pb-3 border-b border-zinc-100 dark:border-zinc-900 mb-2">
                         <SlidersHorizontal className="w-3.5 h-3.5" />
-                        Параметри фільтрації
+                        {translations.filterParamsTitle}
                     </div>
 
                     {[
-                        { id: 'size', title: 'Розмір', items: facets.sizes, state: selectedSizes, setState: setSelectedSizes },
-                        { id: 'color', title: 'Колір', items: facets.colors, state: selectedColors, setState: setSelectedColors },
-                        { id: 'density', title: 'Щільність', items: facets.densities, state: selectedDensities, setState: setSelectedDensities },
-                        { id: 'bottom', title: 'Донна складка', items: facets.bottoms, state: selectedBottoms, setState: setSelectedBottoms },
-                        { id: 'handle', title: 'Посилена ручка', items: facets.handles, state: selectedHandles, setState: setSelectedHandles },
-                        { id: 'weight', title: 'Витримає вагу', items: facets.weights, state: selectedWeights, setState: setSelectedWeights },
+                        { id: 'size', title: translations.sections.size, items: facets.sizes, state: selectedSizes, setState: setSelectedSizes },
+                        { id: 'color', title: translations.sections.color, items: facets.colors, state: selectedColors, setState: setSelectedColors },
+                        { id: 'density', title: translations.sections.density, items: facets.densities, state: selectedDensities, setState: setSelectedDensities },
+                        { id: 'bottom', title: translations.sections.bottom, items: facets.bottoms, state: selectedBottoms, setState: setSelectedBottoms },
+                        { id: 'handle', title: translations.sections.handle, items: facets.handles, state: selectedHandles, setState: setSelectedHandles },
+                        { id: 'weight', title: translations.sections.weight, items: facets.weights, state: selectedWeights, setState: setSelectedWeights },
                     ].map((section) => {
                         if (section.items.length === 0) return null
 
@@ -255,7 +260,9 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                     {filteredProducts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/10">
                             <LayoutGrid className="w-8 h-8 text-zinc-400 dark:text-zinc-700 stroke-[1.5] mb-3" />
-                            <p className="text-zinc-400 dark:text-zinc-500 font-mono text-xs uppercase tracking-widest">Нет товаров с такими параметрами</p>
+                            <p className="text-zinc-400 dark:text-zinc-500 font-mono text-xs uppercase tracking-widest text-center px-4">
+                                {translations.noProductsText}
+                            </p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
