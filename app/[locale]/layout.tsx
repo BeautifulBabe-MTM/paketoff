@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from '@/components/ThemeProvider'
 import Navbar from '@/components/Navbar'
 import "./globals.css";
+import NavbarServer from '@/components/NavbarServer'
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -40,7 +41,7 @@ export default async function RootLayout({
           disableTransitionOnChange
           enableColorScheme={false}
         >
-          <Navbar />
+          <NavbarServer locale={locale} />
           {children}
         </ThemeProvider>
       </body>
