@@ -8,6 +8,8 @@ const LANGUAGES = [
   { code: 'uk', label: 'UA', flag: '🇺🇦' },
   { code: 'en', label: 'EN', flag: '🇬🇧' },
   { code: 'de', label: 'DE', flag: '🇩🇪' },
+  { code: 'fr', label: 'FR', flag: '🇫🇷' },
+  { code: 'it', label: 'IT', flag: '🇮🇹' },
 ]
 
 export default function LangSwitch() {
