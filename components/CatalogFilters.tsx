@@ -33,7 +33,7 @@ interface CatalogFiltersProps {
     }
 }
 
-export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
+export default function CatalogFilters({ initialProducts, totalCount, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
     const [products, setProducts] = useState(initialProducts)
     const [isPending, startTransition] = useTransition()
@@ -51,8 +51,12 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
 
     const loadMore = () => {
         startTransition(async () => {
-            const next = await fetchMoreProducts(products.length, currentCategory, locale as string)
-            setProducts([...products, ...next])
+            const nextProducts = await fetchMoreProducts(
+                products.length,
+                currentCategory,
+                locale as string
+            );
+            setProducts(prev => [...prev, ...nextProducts]);
         })
     }
 
@@ -280,19 +284,31 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                     {products.length === 0 ? (
                         <div className="py-32 text-center text-zinc-400">{translations.noProductsText}</div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
-                            {/* Обычный мап по отфильтрованному массиву */}
-                            {filteredProducts.map((product) => (
-                                <div key={product.id} className="p-3">
-                                    <PackCard product={product} />
-                                </div>
-                            ))}
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+                                {filteredProducts.map((product, index) => (
+                                    <div key={`${product.id}-${index}`} className="p-3">
+                                        <PackCard product={product} />
+                                    </div>
+                                ))}
 
-                            {/* Скелеты, если идет загрузка новых данных через Server Action */}
-                            {isPending && Array.from({ length: 3 }).map((_, i) => (
-                                <PackCardSkeleton key={`skeleton-${i}`} />
-                            ))}
-                        </div>
+                                {isPending && Array.from({ length: 3 }).map((_, i) => (
+                                    <PackCardSkeleton key={`skeleton-${i}`} />
+                                ))}
+                            </div>
+
+                            {products.length < totalCount && (
+                                <div className="mt-12 flex justify-center">
+                                    <button
+                                        onClick={loadMore}
+                                        disabled={isPending}
+                                        className="px-8 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"
+                                    >
+                                        {isPending ? 'Завантаження...' : 'Показати ще'}
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </main>
             </div>
