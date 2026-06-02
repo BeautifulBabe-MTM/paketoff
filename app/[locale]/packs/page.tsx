@@ -28,17 +28,13 @@ export default async function PacksPage({ params, searchParams }: Props) {
     const { locale } = await params
     const { category } = await searchParams
 
-    const whereClause = category ? { category: category } : {};
+    const rawProducts = await prisma.product.findMany({
+        where: category ? { category } : {},
+        take: 15, 
+        orderBy: { createdAt: 'desc' },
+    });
 
-    const [rawProducts, allProducts] = await Promise.all([
-        prisma.product.findMany({
-            where: whereClause,
-            orderBy: { createdAt: 'desc' },
-        }),
-        prisma.product.findMany({ select: { category: true } })
-    ]);
-
-    const rawCategories = Array.from(new Set(allProducts.map(p => p.category)));
+    const rawCategories = Array.from(new Set(rawProducts.map(p => p.category)));
 
     const [translatedProducts, categoriesMapped] = await Promise.all([
         translateProductsList(rawProducts, locale),
@@ -47,10 +43,6 @@ export default async function PacksPage({ params, searchParams }: Props) {
             label: locale === 'uk' ? cat : await translateString(cat, locale)
         })))
     ]);
-
-    const totalCount = await prisma.product.count({
-        where: category ? { category: category } : {}
-    });
 
     const filterTranslations = {
         pageTitle: await translateString('Пакети та упаковка', locale),
@@ -74,9 +66,9 @@ export default async function PacksPage({ params, searchParams }: Props) {
     return (
         <div className="min-h-screen bg-zinc-50 text-zinc-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black pt-28 pb-24 px-4 md:px-8">
             <div className="max-w-7xl mx-auto space-y-8">
-                {/* Хедер страницы убрали, так как он красивее рендерится внутри CatalogFilters */}
                 <CatalogFilters
                     initialProducts={translatedProducts}
+                    totalCount={await prisma.product.count({ where: category ? { category } : {} })}
                     categories={categoriesMapped}
                     currentCategory={category || null}
                     translations={filterTranslations}

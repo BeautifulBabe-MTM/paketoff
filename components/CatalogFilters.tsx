@@ -1,28 +1,16 @@
 'use client'
 
-import { useState, useMemo, useEffect, memo, useDeferredValue } from 'react'
+import { useState, useMemo, useEffect, memo, useTransition } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
-import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
-import dynamic from 'next/dynamic'
-
-const ClientVirtuoso = dynamic(() => import('react-virtuoso').then(mod => mod.VirtuosoGrid), {
-    ssr: false,
-    loading: () => <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">Загрузка...</div>
-})
-
-const ProductGrid = memo(({ products }: { products: any[] }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
-        {products.map((product) => (
-            <PackCard key={product.id} product={product} />
-        ))}
-    </div>
-));
-ProductGrid.displayName = 'ProductGrid';
+import PackCardSkeleton from './PackCardSkeleton'
+import { fetchMoreProducts } from '@/app/actions'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface CatalogFiltersProps {
     initialProducts: any[]
+    totalCount: number
     categories: { id: string; label: string }[]
     currentCategory: string | null
     translations: {
@@ -47,6 +35,8 @@ interface CatalogFiltersProps {
 
 export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
+    const [products, setProducts] = useState(initialProducts)
+    const [isPending, startTransition] = useTransition()
 
     const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null)
     const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -58,6 +48,13 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
         size: false, color: false, density: false, bottom: false, handle: false, weight: false
     })
+
+    const loadMore = () => {
+        startTransition(async () => {
+            const next = await fetchMoreProducts(products.length, currentCategory, locale as string)
+            setProducts([...products, ...next])
+        })
+    }
 
     const { yesLabel, noLabel } = translations;
 
@@ -127,7 +124,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
         const hasBottom = selectedBottoms.length > 0;
         const hasHandle = selectedHandles.length > 0;
 
-        return initialProducts.filter(p => {
+        return products.filter(p => {
             if (selectedSubcat && p.subcategory !== selectedSubcat) return false;
             if (hasSize && !selectedSizes.includes(p.size)) return false;
             if (hasColor && (!p.color || !selectedColors.includes(p.color))) return false;
@@ -149,12 +146,10 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
             return true;
         });
     }, [
-        initialProducts, selectedSubcat, selectedSizes, selectedColors,
+        products, selectedSubcat, selectedSizes, selectedColors,
         selectedDensities, selectedBottoms, selectedHandles, selectedWeights,
         yesLabel, noLabel
     ]);
-
-    const finalProducts = useDeferredValue(filteredProducts);
 
     return (
         <>
@@ -231,7 +226,6 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
 
                 <aside className="space-y-1 bg-white dark:bg-transparent border border-zinc-200 dark:border-transparent rounded-xl p-4 lg:p-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 uppercase tracking-wider pb-3 border-b border-zinc-100 dark:border-zinc-900 mb-2">
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
                         {translations.filterParamsTitle}
                     </div>
 
@@ -283,21 +277,22 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                 </aside>
 
                 <main className="lg:col-span-3">
-                    {finalProducts.length === 0 ? (
+                    {products.length === 0 ? (
                         <div className="py-32 text-center text-zinc-400">{translations.noProductsText}</div>
                     ) : (
-                        <>
-                            <ClientVirtuoso
-                                useWindowScroll
-                                totalCount={finalProducts.length}
-                                itemContent={(index) => (
-                                    <div className="p-3">
-                                        <PackCard product={finalProducts[index]} />
-                                    </div>
-                                )}
-                                listClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10"
-                            />
-                        </>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+                            {/* Обычный мап по отфильтрованному массиву */}
+                            {filteredProducts.map((product) => (
+                                <div key={product.id} className="p-3">
+                                    <PackCard product={product} />
+                                </div>
+                            ))}
+
+                            {/* Скелеты, если идет загрузка новых данных через Server Action */}
+                            {isPending && Array.from({ length: 3 }).map((_, i) => (
+                                <PackCardSkeleton key={`skeleton-${i}`} />
+                            ))}
+                        </div>
                     )}
                 </main>
             </div>
