@@ -1,10 +1,19 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, memo } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import { SlidersHorizontal, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react'
+
+const ProductGrid = memo(({ products }: { products: any[] }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+        {products.map((product) => (
+            <PackCard key={product.id} product={product} />
+        ))}
+    </div>
+));
+ProductGrid.displayName = 'ProductGrid';
 
 interface CatalogFiltersProps {
     initialProducts: any[]
@@ -32,7 +41,6 @@ interface CatalogFiltersProps {
 
 export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
-
     const [page, setPage] = useState(1);
     const ITEMS_PER_PAGE = 40;
 
@@ -50,6 +58,8 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     useEffect(() => {
         setPage(1);
     }, [selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights]);
+
+    const { yesLabel, noLabel } = translations;
 
     const toggleSection = (section: string) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -119,7 +129,6 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
 
         return initialProducts.filter(p => {
             if (selectedSubcat && p.subcategory !== selectedSubcat) return false;
-
             if (hasSize && !selectedSizes.includes(p.size)) return false;
             if (hasColor && (!p.color || !selectedColors.includes(p.color))) return false;
             if (hasDensity && (!p.density || !selectedDensities.includes(p.density))) return false;
@@ -142,7 +151,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     }, [
         initialProducts, selectedSubcat, selectedSizes, selectedColors,
         selectedDensities, selectedBottoms, selectedHandles, selectedWeights,
-        translations
+        yesLabel, noLabel
     ]);
 
     const displayedProducts = filteredProducts.slice(0, page * ITEMS_PER_PAGE);
@@ -276,29 +285,22 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                 </aside>
 
                 <main className="lg:col-span-3">
-                    {displayedProducts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-32 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/10">
-                            <LayoutGrid className="w-8 h-8 text-zinc-400 dark:text-zinc-700 stroke-[1.5] mb-3" />
-                            <p className="text-zinc-400 dark:text-zinc-500 font-mono text-xs uppercase tracking-widest text-center px-4">
-                                {translations.noProductsText}
-                            </p>
-                        </div>
+                    {filteredProducts.length === 0 ? (
+                        <div className="py-32 text-center text-zinc-400">{translations.noProductsText}</div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
-                            {displayedProducts.map((product) => (
-                                <PackCard key={product.id} product={product} />
-                            ))}
-                        </div>
-                    )}
-                    {hasMore && (
-                        <div className="flex justify-center mt-12">
-                            <button
-                                onClick={() => setPage(p => p + 1)}
-                                className="px-8 py-3 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity"
-                            >
-                                Показати ще
-                            </button>
-                        </div>
+                        <>
+                            <ProductGrid products={displayedProducts} />
+                            {hasMore && (
+                                <div className="flex justify-center mt-12">
+                                    <button
+                                        onClick={() => setPage(p => p + 1)}
+                                        className="px-8 py-3 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity"
+                                    >
+                                        Показати ще
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </main>
             </div>
