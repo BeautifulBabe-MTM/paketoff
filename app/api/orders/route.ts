@@ -1,66 +1,92 @@
 import { NextResponse } from 'next/server'
-
-// Если у тебя используется Prisma, можешь раскомментировать импорт базы
 import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
     try {
         const body = await req.json()
         
-        // Посмотрим в консоль терминала (не браузера!), что именно прилетело с фронта
-        console.log('=== НОВИЙ ЗАПИТ НА ЗАМОВЛЕННЯ ===', JSON.stringify(body, null, 2))
+        // Лог в терминал для контроля входящих данных
+        console.log('=== НОВЫЙ ЗАКАЗ PACKLAB ===', JSON.stringify(body, null, 2))
 
         const { client, shipping, paymentMethod, items, totalSum, currency, locale } = body
 
-        // Простейшая серверная валидация на коленке
-        if (!client?.name || !client?.email || !items || items.length === 0) {
+        // Строгая серверная валидация, чтобы в базу не улетел пустой запрос
+        if (
+            !client?.name || !client?.phone || !client?.email ||
+            !shipping?.country || !shipping?.city || !shipping?.address ||
+            !items || items.length === 0 || !totalSum
+        ) {
             return NextResponse.json(
-                { error: 'Missing required fields or cart is empty' },
+                { error: 'Missing required checkout fields' },
                 { status: 400 }
             )
         }
 
-        // 1. ТУТ БУДЕТ ЗАПИСЬ В БАЗУ ДАННЫХ (Prisma / MongoDB)
-        // const order = await prisma.order.create({
-        //     data: { ... }
-        // })
-        
-        // Пока базы нет — генерируем фейковый ID для тестов фронта
-        const fakeOrderId = 'ORD-' + Math.random().toString(36).substring(2, 9).toUpperCase()
+        // 1. Сохраняем заказ в изолированную коллекцию pl_orders
+        const order = await prisma.plOrder.create({
+            data: {
+                client: {
+                    name: client.name,
+                    phone: client.phone,
+                    email: client.email,
+                },
+                shipping: {
+                    country: shipping.country,
+                    city: shipping.city,
+                    address: shipping.address,
+                    zip: shipping.zip || '', // Для Украины может оставаться пустым
+                },
+                paymentMethod,
+                paymentStatus: 'PENDING', // По умолчанию ждём оплаты
+                totalSum: Number(totalSum),
+                currency,
+                locale,
+                items: items.map((item: any) => ({
+                    productId: item.productId,
+                    name: item.name,
+                    size: item.size,
+                    print: item.print,
+                    quantity: Number(item.quantity),
+                    total: Number(item.total)
+                }))
+            }
+        })
 
-        // 2. РАЗВЕТВЛЕНИЕ ЛОГИКИ ОПЛАТЫ
+        // 2. Разветвление логики оплаты
         if (paymentMethod === 'card') {
-            
-            // Сюда мы потом вставим реальный Stripe / WayForPay.
-            // Шлюз вернет ссылку, а мы передадим её фронтенду.
-            
             let paymentUrl = ''
             
+            // Если заказ в гривне или оформлен через украинскую локаль
             if (currency === 'UAH' || locale === 'uk') {
-                // Инициализируем WayForPay и получаем ссылку
-                paymentUrl = 'https://secure.wayforpay.com/page?v=fake-merchant-session' 
+                
+                // TODO: Сюда вставим реальную интеграцию WayForPay (передаем order.id и order.totalSum)
+                paymentUrl = `https://secure.wayforpay.com/page?v=fake-session&orderId=${order.id}`
+                
             } else {
-                // Инициализируем Stripe Checkout Session и получаем ссылку
-                paymentUrl = 'https://checkout.stripe.com/c/pay/fake-stripe-session'
+                
+                // TODO: Сюда вставим реальную интеграцию Stripe (передаем order.id и order.totalSum)
+                paymentUrl = `https://checkout.stripe.com/c/pay/fake-stripe-session?orderId=${order.id}`
+                
             }
 
+            // Возвращаем ссылку на платёжку. Фронтенд редиректнет юзера туда.
             return NextResponse.json({ 
                 success: true, 
-                orderId: fakeOrderId,
-                url: paymentUrl // Фронтенд подхватит этот url и редиректнет юзера
+                orderId: order.id,
+                url: paymentUrl 
             })
 
         } else {
-            // Если выбран B2B Invoice / IBAN (обычный инвойс без онлайн-оплаты)
-            // Мы просто подтверждаем заказ. Фронт очистит корзину и кинет на /success
+            // Если выбран B2B Invoice / IBAN (обычный счёт)
+            // Платёжный шлюз не нужен. Фронтенд очистит корзину и кинет на страницу /success
             return NextResponse.json({ 
                 success: true, 
-                orderId: fakeOrderId 
+                orderId: order.id 
             })
         }
 
     } catch (error) {
-        console.error('API_ORDERS_ERROR:', error)
+        console.error('API_ORDERS_CREATE_ERROR:', error)
         return NextResponse.json(
             { error: 'Internal Server Error' },
             { status: 500 }

@@ -13,21 +13,16 @@ interface Props {
 async function getTranslatedProduct(product: any, locale: string) {
     if (locale === 'uk') return product
 
-    const translatedName = await translateString(product.name, locale)
-    const translatedDescription = await translateString(product.description, locale)
-    const translatedCategory = await translateString(product.category, locale)
-    
-    const translatedTags = product.tags && Array.isArray(product.tags)
-        ? await Promise.all(product.tags.map((tag: string) => translateString(tag, locale)))
-        : []
+    const [name, description, category, tags] = await Promise.all([
+        translateString(product.name, locale),
+        translateString(product.description, locale),
+        translateString(product.category, locale),
+        product.tags && Array.isArray(product.tags)
+            ? Promise.all(product.tags.map((tag: string) => translateString(tag, locale)))
+            : Promise.resolve([])
+    ])
 
-    return {
-        ...product,
-        name: translatedName,
-        description: translatedDescription,
-        category: translatedCategory,
-        tags: translatedTags
-    }
+    return { ...product, name, description, category, tags }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -39,20 +34,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         return { title: fallbackTitle }
     }
 
-    const translated = await getTranslatedProduct(product, locale)
-    const fallbackDesc = translated.description ? translated.description.slice(0, 100) : ''
-    
-    const keywordsString = translated.tags && translated.tags.length > 0 
-        ? translated.tags.join(', ') 
-        : ''
+    const [translatedName, translatedDesc] = await Promise.all([
+        translateString(product.name, locale),
+        translateString(product.description || '', locale)
+    ])
 
-    const seoDescriptionTemplate = `Замовити ${translated.name} розміром ${translated.size}. Висока якість, оптові ціни, швидка доставка. ${fallbackDesc}`
+    const seoDescriptionTemplate = `Замовити ${translatedName}. Якість, оптові ціни. ${translatedDesc.slice(0, 100)}`
     const finalDescription = await translateString(seoDescriptionTemplate, locale)
 
     return {
-        title: `${translated.name} | PACK LAB`,
+        title: `${translatedName} | PACK LAB`,
         description: finalDescription,
-        keywords: keywordsString,
         alternates: {
             canonical: `https://packlab.com/${locale}/packs/${id}`,
             languages: {
@@ -90,8 +82,21 @@ export default async function ProductPage({ params }: Props) {
         addToCartBtn: await translateString('Додати в кошик', locale),
     }
 
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": translatedProduct.name,
+        "description": translatedProduct.description,
+        "category": translatedProduct.category,
+    };
+
     return (
         <main className="min-h-screen bg-zinc-50 text-zinc-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100 pt-28 pb-24 px-4 md:px-8 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+
             <div className="max-w-6xl mx-auto">
 
                 <Link
@@ -102,18 +107,18 @@ export default async function ProductPage({ params }: Props) {
                     {backToCatalogText}
                 </Link>
 
-                <ProductConfigurator 
+                <ProductConfigurator
                     locale={locale}
-                    product={translatedProduct} 
-                    translations={configuratorTranslations} 
+                    product={translatedProduct}
+                    translations={configuratorTranslations}
                 />
 
                 {/* Вывод хэштегов */}
                 {translatedProduct.tags && translatedProduct.tags.length > 0 && (
                     <div className="mt-12 pt-6 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-2">
                         {translatedProduct.tags.map((tag: string, index: number) => (
-                            <span 
-                                key={index} 
+                            <span
+                                key={index}
                                 className="text-[10px] font-mono tracking-wider uppercase bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 px-2 py-1 rounded"
                             >
                                 #{tag}

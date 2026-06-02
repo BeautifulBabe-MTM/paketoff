@@ -7,14 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Вложенный объект для опций печати (шелкография / флексо)
 type PrintOption {
   code     String
   quantity Int
   price    Float
 }
 
-// Вложенный объект для прогрессивной цены в зависимости от объема (опт)
 type PriceTier {
   minQty Int
   price  Float
@@ -49,4 +47,51 @@ model Product {
   updatedAt    DateTime      @updatedAt
 
   @@map("products")
+}
+
+type PlOrderClient {
+  name  String
+  phone String
+  email String
+}
+
+type PlOrderShipping {
+  country String
+  city    String
+  address String
+  zip     String
+}
+
+type PlOrderItem {
+  productId String
+  name      String
+  size      String
+  print     String
+  quantity  Int
+  total     Float
+}
+
+enum OrderStatus {
+  NEW
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model PlOrder {
+  id            String               @id @default(auto()) @map("_id") @db.ObjectId
+  client        PlOrderClient
+  shipping      PlOrderShipping
+  items         PlOrderItem[]
+  paymentMethod String               // 'card' или 'invoice'
+  paymentStatus String               @default("PENDING")
+  totalSum      Float
+  currency      String
+  locale        String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("pl_orders") // <-- Имя новой коллекции в MongoDB
 }

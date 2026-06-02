@@ -5,12 +5,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Внутренняя функция без кэша (запрос к Google API)
 async function doTranslation(text: string, targetLang: string): Promise<string> {
   if (!text || !text.trim() || targetLang === 'uk') return text;
-  
+
   try {
     await delay(65); // Небольшой зазор, чтобы не ловить 429 от Гугла
 
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=uk&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.trim())}`;
-    
+
     const res = await fetch(url, {
       method: 'GET',
       signal: AbortSignal.timeout(4000), // Понизили таймаут до 4 сек, чтобы страница не висела вечно, если Гугл затупит
@@ -18,7 +18,7 @@ async function doTranslation(text: string, targetLang: string): Promise<string> 
         'Accept': '*/*',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
-      next: { revalidate: 86400 } 
+      next: { revalidate: 86400 }
     });
 
     if (!res.ok) {
@@ -72,6 +72,16 @@ export async function translateProduct<T extends Record<string, any>>(product: T
     tags = await Promise.all(product.tags.map(tag => translateString(tag, locale)));
   }
 
+  // SEO-ГЕНЕРАЦИЯ
+  // Собираем "скелет" мета-тегов на языке оригинала (укр), потом переводим
+  const rawSeoTitle = `${name} | ${category || 'Упаковка'} купити за найкращою ціною - PackLab`;
+  const rawSeoDescription = `${description ? description.slice(0, 140) : name}. Якісна продукція PackLab: ${size}, ${color}, ${density}. Швидка доставка.`;
+
+  const [seoTitle, seoDescription] = await Promise.all([
+    translateString(rawSeoTitle, locale),
+    translateString(rawSeoDescription, locale)
+  ]);
+
   return {
     ...product,
     name,
@@ -83,13 +93,15 @@ export async function translateProduct<T extends Record<string, any>>(product: T
     density,
     weight,
     size,
-    tags
+    tags,
+    seoTitle,    // Теперь у товара есть готовый мета-тайтл
+    seoDescription
   };
 }
 
 export async function translateProductsList<T extends Record<string, any>>(products: T[], locale: string): Promise<T[]> {
   if (locale === 'uk' || !products || !products.length) return products;
-  
+
   const batchSize = 15; // Переводим по 15 товаров за один залп
   const translatedList: T[] = [];
 
@@ -97,14 +109,14 @@ export async function translateProductsList<T extends Record<string, any>>(produ
 
   for (let i = 0; i < products.length; i += batchSize) {
     const batch = products.slice(i, i + batchSize);
-    
+
     // Запускаем перевод 15 товаров параллельно
     const translatedBatch = await Promise.all(
       batch.map(item => translateProduct(item, locale))
     );
-    
+
     translatedList.push(...translatedBatch);
-    
+
     // Если это не последняя пачка, делаем микро-паузу, чтобы пощадить лимиты Гугла
     if (i + batchSize < products.length) {
       await delay(80);
