@@ -1,37 +1,40 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import { SlidersHorizontal, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface CatalogFiltersProps {
-  initialProducts: any[]
-  categories: { id: string; label: string }[]
-  currentCategory: string | null
-  translations: {
-    pageTitle: string // <--- Добавили заголовок
-    allProductsBtn: string
-    allSubcategoriesBtn: string
-    foundProductsLabel: string
-    filterParamsTitle: string
-    noProductsText: string
-    yesLabel: string
-    noLabel: string
-    sections: {
-      size: string
-      color: string
-      density: string
-      bottom: string
-      handle: string
-      weight: string
+    initialProducts: any[]
+    categories: { id: string; label: string }[]
+    currentCategory: string | null
+    translations: {
+        pageTitle: string
+        allProductsBtn: string
+        allSubcategoriesBtn: string
+        foundProductsLabel: string
+        filterParamsTitle: string
+        noProductsText: string
+        yesLabel: string
+        noLabel: string
+        sections: {
+            size: string
+            color: string
+            density: string
+            bottom: string
+            handle: string
+            weight: string
+        }
     }
-  }
 }
 
 export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
+
+    const [page, setPage] = useState(1);
+    const ITEMS_PER_PAGE = 40;
 
     const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null)
     const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -40,10 +43,13 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     const [selectedBottoms, setSelectedBottoms] = useState<string[]>([])
     const [selectedHandles, setSelectedHandles] = useState<string[]>([])
     const [selectedWeights, setSelectedWeights] = useState<string[]>([])
-
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
         size: false, color: false, density: false, bottom: false, handle: false, weight: false
     })
+
+    useEffect(() => {
+        setPage(1);
+    }, [selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights]);
 
     const toggleSection = (section: string) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -104,30 +110,43 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     }
 
     const filteredProducts = useMemo(() => {
+        const hasSize = selectedSizes.length > 0;
+        const hasColor = selectedColors.length > 0;
+        const hasDensity = selectedDensities.length > 0;
+        const hasWeight = selectedWeights.length > 0;
+        const hasBottom = selectedBottoms.length > 0;
+        const hasHandle = selectedHandles.length > 0;
+
         return initialProducts.filter(p => {
-            if (selectedSubcat && p.subcategory !== selectedSubcat) return false
-            if (selectedSizes.length > 0 && !selectedSizes.includes(p.size)) return false
-            if (selectedColors.length > 0 && (!p.color || !selectedColors.includes(p.color))) return false
-            if (selectedDensities.length > 0 && (!p.density || !selectedDensities.includes(p.density))) return false
-            if (selectedWeights.length > 0 && (!p.weight || !selectedWeights.includes(p.weight))) return false
+            if (selectedSubcat && p.subcategory !== selectedSubcat) return false;
 
-            if (selectedBottoms.length > 0) {
-                let itemValue = translations.noLabel
-                if (p.bottom === true) itemValue = translations.yesLabel
-                else if (typeof p.bottom === 'string') itemValue = p.bottom
-                if (!selectedBottoms.includes(itemValue)) return false
+            if (hasSize && !selectedSizes.includes(p.size)) return false;
+            if (hasColor && (!p.color || !selectedColors.includes(p.color))) return false;
+            if (hasDensity && (!p.density || !selectedDensities.includes(p.density))) return false;
+            if (hasWeight && (!p.weight || !selectedWeights.includes(p.weight))) return false;
+
+            if (hasBottom) {
+                const val = p.bottom === true ? translations.yesLabel :
+                    p.bottom === false ? translations.noLabel : p.bottom;
+                if (!selectedBottoms.includes(val)) return false;
             }
 
-            if (selectedHandles.length > 0) {
-                let itemValue = translations.noLabel
-                if (p.handle === true) itemValue = translations.yesLabel
-                else if (typeof p.handle === 'string') itemValue = p.handle
-                if (!selectedHandles.includes(itemValue)) return false
+            if (hasHandle) {
+                const val = p.handle === true ? translations.yesLabel :
+                    p.handle === false ? translations.noLabel : p.handle;
+                if (!selectedHandles.includes(val)) return false;
             }
 
-            return true
-        })
-    }, [initialProducts, selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights, translations])
+            return true;
+        });
+    }, [
+        initialProducts, selectedSubcat, selectedSizes, selectedColors,
+        selectedDensities, selectedBottoms, selectedHandles, selectedWeights,
+        translations
+    ]);
+
+    const displayedProducts = filteredProducts.slice(0, page * ITEMS_PER_PAGE);
+    const hasMore = displayedProducts.length < filteredProducts.length;
 
     return (
         <>
@@ -257,7 +276,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                 </aside>
 
                 <main className="lg:col-span-3">
-                    {filteredProducts.length === 0 ? (
+                    {displayedProducts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/10">
                             <LayoutGrid className="w-8 h-8 text-zinc-400 dark:text-zinc-700 stroke-[1.5] mb-3" />
                             <p className="text-zinc-400 dark:text-zinc-500 font-mono text-xs uppercase tracking-widest text-center px-4">
@@ -266,13 +285,22 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
-                            {filteredProducts.map((product) => (
+                            {displayedProducts.map((product) => (
                                 <PackCard key={product.id} product={product} />
                             ))}
                         </div>
                     )}
+                    {hasMore && (
+                        <div className="flex justify-center mt-12">
+                            <button
+                                onClick={() => setPage(p => p + 1)}
+                                className="px-8 py-3 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity"
+                            >
+                                Показати ще
+                            </button>
+                        </div>
+                    )}
                 </main>
-
             </div>
         </>
     )

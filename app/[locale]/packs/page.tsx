@@ -9,12 +9,10 @@ interface Props {
     searchParams: Promise<{ category?: string }>
 }
 
-// 1. Мультиязычные метаданные страницы каталога
 export async function generateMetadata({ params, searchParams }: Props) {
     const { locale } = await params
     const { category } = await searchParams
 
-    // Если выбрана категория, переводим её название для тайтла
     const categoryTitle = category ? await translateString(category, locale) : ''
     const baseTitle = category ? `Каталог: ${categoryTitle}` : 'Каталог продукції — PACKLAB'
 
@@ -27,39 +25,34 @@ export async function generateMetadata({ params, searchParams }: Props) {
     }
 }
 
-// 2. Серверный рендеринг страницы каталога
 export default async function PacksPage({ params, searchParams }: Props) {
     const { locale } = await params
     const { category } = await searchParams
 
-    // Тянем товары из базы
-    const rawProducts = await prisma.product.findMany({
-        where: category ? { category: category } : {},
-        orderBy: { createdAt: 'desc' }
-    })
+    const whereClause = category ? { category: category } : {};
 
-    // Вытаскиваем уникальные категории напрямую из базы для табов фильтра
-    const allProducts = await prisma.product.findMany({
-        select: { category: true }
-    })
-    const rawCategories = Array.from(new Set(allProducts.map(p => p.category)))
+    const [rawProducts, allProducts] = await Promise.all([
+        prisma.product.findMany({
+            where: whereClause,
+            orderBy: { createdAt: 'desc' },
+        }),
+        prisma.product.findMany({ select: { category: true } })
+    ]);
 
-    // Переводим массив продуктов
-    const translatedProducts = await translateProductsList(rawProducts, locale)
+    const rawCategories = Array.from(new Set(allProducts.map(p => p.category)));
 
-    // Переводим табы категорий
-    const categoriesMapped = await Promise.all(
-        rawCategories.map(async (cat) => {
-            return {
-                id: cat,
-                label: locale === 'uk' ? cat : await translateString(cat, locale)
-            }
-        })
-    )
+    const [translatedProducts, categoriesMapped] = await Promise.all([
+        translateProductsList(rawProducts, locale),
+        Promise.all(rawCategories.map(async (cat) => ({
+            id: cat,
+            label: locale === 'uk' ? cat : await translateString(cat, locale)
+        })))
+    ]);
 
-    // ==========================================================
-    // СБОРКА СЕРВЕРНЫХ ПЕРЕВОДОВ ДЛЯ КЛИЕНТСКОГО ФИЛЬТРА
-    // ==========================================================
+    const totalCount = await prisma.product.count({
+        where: category ? { category: category } : {}
+    });
+
     const filterTranslations = {
         pageTitle: await translateString('Пакети та упаковка', locale),
         allProductsBtn: await translateString('Усі види продукції', locale), // Исправлено на чистый укр
@@ -87,7 +80,7 @@ export default async function PacksPage({ params, searchParams }: Props) {
                     initialProducts={translatedProducts}
                     categories={categoriesMapped}
                     currentCategory={category || null}
-                    translations={filterTranslations} // Залетает перевод всей статики
+                    translations={filterTranslations}
                 />
             </div>
         </div>
