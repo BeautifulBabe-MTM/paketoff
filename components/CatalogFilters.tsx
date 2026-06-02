@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect, memo, useTransition } from 'react'
+import { useState, useMemo, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import PackCardSkeleton from './PackCardSkeleton'
 import { fetchMoreProducts } from '@/app/actions'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, ArrowDown } from 'lucide-react'
 
 interface CatalogFiltersProps {
     initialProducts: any[]
@@ -38,6 +38,11 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
     const { locale } = useParams()
     const [products, setProducts] = useState(initialProducts)
     const [isPending, startTransition] = useTransition()
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null)
     const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -72,6 +77,7 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
         setSelectedHandles([]);
         setSelectedWeights([]);
     }, [initialProducts]);
+
 
     const { yesLabel, noLabel } = translations;
 
@@ -167,6 +173,9 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
         selectedDensities, selectedBottoms, selectedHandles, selectedWeights,
         yesLabel, noLabel
     ]);
+
+    if (!isMounted) return null;
+
 
     return (
         <>
@@ -317,7 +326,11 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
                                         disabled={isPending}
                                         className="px-8 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"
                                     >
-                                        {isPending ? 'Завантаження...' : 'Показати ще'}
+                                        {isPending ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <ArrowDown className="w-5 h-5" />
+                                        )}
                                     </button>
                                 </div>
                             )}
