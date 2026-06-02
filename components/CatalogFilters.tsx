@@ -61,6 +61,18 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
         })
     }
 
+    useEffect(() => {
+        setProducts(initialProducts);
+
+        setSelectedSubcat(null);
+        setSelectedSizes([]);
+        setSelectedColors([]);
+        setSelectedDensities([]);
+        setSelectedBottoms([]);
+        setSelectedHandles([]);
+        setSelectedWeights([]);
+    }, [initialProducts]);
+
     const { yesLabel, noLabel } = translations;
 
     const toggleSection = (section: string) => {

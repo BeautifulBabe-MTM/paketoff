@@ -29,26 +29,30 @@ export default async function PacksPage({ params, searchParams }: Props) {
     const { category } = await searchParams
     const where = category ? { category } : {}
 
-    const [rawProducts, allProducts, totalCount] = await Promise.all([
-        prisma.product.findMany({ where, take: 15, orderBy: { createdAt: 'desc' } }),
-        prisma.product.findMany({
-            where,
-            select: {
-                id: true,
-                category: true,
-                subcategory: true,
-                size: true,
-                color: true,
-                density: true,
-                weight: true,
-                bottom: true,
-                handle: true
-            }
-        }),
-        prisma.product.count({ where })
-    ]);
+    const allCategoriesRaw = await prisma.product.findMany({
+        distinct: ['category'],
+        select: { category: true }
+    });
+    const allCategories = allCategoriesRaw.map(p => p.category);
 
-    const allCategories = Array.from(new Set(allProducts.map(p => p.category)));
+    const [rawProducts, allProducts, totalCount] = await Promise.all([
+    prisma.product.findMany({ where, take: 15, orderBy: { createdAt: 'desc' } }),
+    prisma.product.findMany({
+        where,
+        select: {
+            id: true,
+            category: true,
+            subcategory: true,
+            size: true,
+            color: true,
+            density: true,
+            weight: true,
+            bottom: true,
+            handle: true
+        }
+    }),
+    prisma.product.count({ where })
+]);
 
     const [translatedProducts, categoriesMapped] = await Promise.all([
         translateProductsList(rawProducts, locale),
