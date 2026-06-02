@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from '@/components/ThemeProvider'
 import "./globals.css";
 import NavbarServer from '@/components/NavbarServer'
+import ProgressBar from '@/components/ProgressBar'
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -33,6 +34,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
+        <ProgressBar />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
