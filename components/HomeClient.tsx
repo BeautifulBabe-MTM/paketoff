@@ -66,7 +66,7 @@ export default function HomeClient({ locale, subtitle, buttonText, calc }: HomeC
 
         <div className="space-y-2">
           <h1 className="text-4xl font-black tracking-tight uppercase sm:text-5xl bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 to-zinc-700 dark:from-white dark:to-zinc-400">
-            Paketoff Production
+            Packlab Production
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono tracking-wide uppercase max-w-sm mx-auto">
             {subtitle}

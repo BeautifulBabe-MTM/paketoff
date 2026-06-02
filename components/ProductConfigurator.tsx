@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { Package } from 'lucide-react'
+import { Package, Check, Loader2 } from 'lucide-react'
+import { CartItem, getCartItems, saveCartItems } from '@/lib/cart'
 
 interface PriceTier {
   minQty: number
@@ -15,7 +16,6 @@ interface PrintOption {
   price: number
 }
 
-// Описываем типы для наших серверных переводов
 interface ConfiguratorTranslations {
   sizeLabel: string
   densityLabel: string
@@ -24,12 +24,16 @@ interface ConfiguratorTranslations {
   qtyLabel: string
   pricePerUnitLabel: string
   addToCartBtn: string
+  addingBtn?: string
+  addedBtn?: string
 }
 
 interface ProductConfiguratorProps {
+  locale: string
   product: {
     id: string
     name: string
+    originalName?: string
     category: string
     currency: string
     size: string
@@ -41,19 +45,22 @@ interface ProductConfiguratorProps {
     printOptions: PrintOption[]
     tags?: string[]
   }
-  translations: ConfiguratorTranslations // <--- ПРИНИМАЕМ ГОТОВЫЙ ПЕРЕВОД
+  translations: ConfiguratorTranslations
 }
 
-export default function ProductConfigurator({ product, translations }: ProductConfiguratorProps) {
+export default function ProductConfigurator({ locale, product, translations }: ProductConfiguratorProps) {
   const uniquePrintCodes = Array.from(
     new Set((product.printOptions || []).map((opt) => opt.code))
   ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 
-  // Системное состояние оставляем на 'Без друку', чтобы расчеты не ломались
-  const [selectedPrint, setSelectedPrint] = useState<string>('Без друку')
+  // Изменили дефолт на системный маркер 'none'
+  const [selectedPrint, setSelectedPrint] = useState<string>('none')
   const [quantity, setQuantity] = useState<number>(100)
   const [pricePerUnit, setPricePerUnit] = useState<number>(0)
   const [totalPrice, setTotalPrice] = useState<number>(0)
+
+  const [isAdding, setIsAdding] = useState<boolean>(false)
+  const [isAdded, setIsAdded] = useState<boolean>(false)
 
   useEffect(() => {
     const productPrices = product.price || []
@@ -62,7 +69,8 @@ export default function ProductConfigurator({ product, translations }: ProductCo
     let currentBasePrice = matchingProductTier ? matchingProductTier.price : 0
 
     let currentPrintPrice = 0
-    if (selectedPrint !== 'Без друку' && product.printOptions) {
+    // Проверяем системный 'none' вместо кириллицы
+    if (selectedPrint !== 'none' && product.printOptions) {
       const validOptions = product.printOptions.filter(opt => opt.code === selectedPrint)
       const sortedPrintTiers = [...validOptions].sort((a, b) => b.quantity - a.quantity)
       const matchingPrintTier = sortedPrintTiers.find(opt => quantity >= opt.quantity) || validOptions[0]
@@ -77,12 +85,50 @@ export default function ProductConfigurator({ product, translations }: ProductCo
     setTotalPrice(finalPricePerUnit * quantity)
   }, [quantity, selectedPrint, product])
 
+  const handleAddToCart = () => {
+    setIsAdding(true)
+
+    setTimeout(() => {
+      const currentCart = getCartItems()
+
+      // Теперь ID формируется чисто и без кириллицы
+      const cartItemId = `${product.id}-${selectedPrint}`
+      const existingItemIndex = currentCart.findIndex(item => item.id === cartItemId)
+
+      if (existingItemIndex > -1) {
+        const currentQty = currentCart[existingItemIndex].quantity + quantity
+        currentCart[existingItemIndex].quantity = currentQty
+        currentCart[existingItemIndex].totalPrice = currentCart[existingItemIndex].pricePerUnit * currentQty
+      } else {
+        const newItem: CartItem = {
+          id: cartItemId,
+          productId: product.id,
+          name: product.name,
+          originalName: product.originalName || (locale === 'uk' ? product.name : ''),
+          size: product.size,
+          density: product.density || null,
+          print: selectedPrint, // Сюда улетит чистый 'none' или код цифрами
+          quantity: quantity,
+          pricePerUnit: pricePerUnit,
+          totalPrice: totalPrice,
+          image: product.images?.[0] || null,
+          currency: product.currency
+        }
+        currentCart.push(newItem)
+      }
+
+      saveCartItems(currentCart)
+      setIsAdding(false)
+      setIsAdded(true)
+      setTimeout(() => setIsAdded(false), 2000)
+    }, 600)
+  }
+
   const currencySign = product.currency === 'USD' ? '$' : 'грн'
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-
-      {/* ЛЕВАЯ СТОРОНА: Фото и ТТХ */}
+      {/* Левая сторона */}
       <div className="lg:col-span-5 space-y-4">
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-zinc-100 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800/80">
           {product.images?.[0] ? (
@@ -115,10 +161,8 @@ export default function ProductConfigurator({ product, translations }: ProductCo
         </div>
       </div>
 
-      {/* ПРАВАЯ СТОРОНА: Калькулятор */}
+      {/* Правая сторона */}
       <div className="lg:col-span-7 space-y-8">
-
-        {/* Категория и Название */}
         <div className="space-y-2">
           <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
             {product.category}
@@ -128,14 +172,13 @@ export default function ProductConfigurator({ product, translations }: ProductCo
           </h1>
         </div>
 
-        {/* Описание */}
         {product.description && (
           <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-light border-l-2 border-zinc-300 dark:border-zinc-800 pl-4 py-1">
             {product.description}
           </p>
         )}
 
-        {/* ВЫБОР ВАРИАНТА ДРУКУ */}
+        {/* Выбор печати */}
         <div className="space-y-3">
           <label className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
             {translations.printLabel}
@@ -143,13 +186,13 @@ export default function ProductConfigurator({ product, translations }: ProductCo
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             <button
               type="button"
-              onClick={() => setSelectedPrint('Без друку')}
-              className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${selectedPrint === 'Без друку'
-                  ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
-                  : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
+              onClick={() => setSelectedPrint('none')} // Кнопка сетает системный 'none'
+              className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${selectedPrint === 'none'
+                ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
+                : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
                 }`}
             >
-              {translations.noPrintBtn} {/* Кнопка "Без печати" на нужном языке */}
+              {translations.noPrintBtn}
             </button>
 
             {uniquePrintCodes.map((code) => (
@@ -158,8 +201,8 @@ export default function ProductConfigurator({ product, translations }: ProductCo
                 type="button"
                 onClick={() => setSelectedPrint(code)}
                 className={`px-3 py-2.5 text-xs font-mono font-medium rounded-lg border transition-all text-center ${selectedPrint === code
-                    ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
-                    : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
+                  ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-950 font-bold shadow-md shadow-zinc-950/10'
+                  : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:bg-zinc-900/40 dark:border-zinc-800/80 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
                   }`}
               >
                 {code}
@@ -168,7 +211,7 @@ export default function ProductConfigurator({ product, translations }: ProductCo
           </div>
         </div>
 
-        {/* ИНПУТ КОЛИЧЕСТВА */}
+        {/* Количество */}
         <div className="space-y-3 max-w-[240px]">
           <label className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
             {translations.qtyLabel}
@@ -185,7 +228,7 @@ export default function ProductConfigurator({ product, translations }: ProductCo
           </div>
         </div>
 
-        {/* СТОИМОСТЬ И КНОПКА КУПИТЬ */}
+        {/* Цена и кнопка */}
         <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
           <div className="space-y-1">
             <div className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase">
@@ -198,12 +241,36 @@ export default function ProductConfigurator({ product, translations }: ProductCo
 
           <button
             type="button"
-            className="w-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-sm uppercase tracking-wider py-4 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] transition-all"
+            disabled={isAdding}
+            onClick={handleAddToCart}
+            className={`w-full font-bold text-sm uppercase tracking-wider py-4 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 select-none ${isAdded
+              ? 'bg-emerald-600 text-white dark:bg-emerald-500'
+              : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200'
+              } disabled:opacity-80 disabled:cursor-not-allowed`}
           >
-            {translations.addToCartBtn}
+            {isAdding && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isAdded && <Check className="w-4 h-4" />}
+            {isAdding && (
+              translations.addingBtn || {
+                en: 'Adding...',
+                de: 'Wird hinzugefügt...',
+                fr: 'Ajout...',
+                it: 'Aggiunta...',
+                uk: 'Додавання...'
+              }[locale] || 'Adding...'
+            )}
+            {isAdded && (
+              translations.addedBtn || {
+                en: 'Added!',
+                de: 'Hinzugefügt!',
+                fr: 'Ajouté!',
+                it: 'Aggiunto!',
+                uk: 'Додано!'
+              }[locale] || 'Added!'
+            )}
+            {!isAdding && !isAdded && translations.addToCartBtn}
           </button>
         </div>
-
       </div>
     </div>
   )

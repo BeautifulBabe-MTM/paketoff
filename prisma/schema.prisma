@@ -48,5 +48,5 @@ model Product {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  @@map("products") // Убедись, что название коллекции в монге совпадает (обычно во множественном числе)
+  @@map("products")
 }

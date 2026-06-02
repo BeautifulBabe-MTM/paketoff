@@ -6,15 +6,14 @@ interface NavbarServerProps {
 }
 
 export default async function NavbarServer({ locale }: NavbarServerProps) {
-  // Переводим всё на сервере один раз (оно кэшируется, так что это мгновенно)
   const translatedCatalog = await translateString('Каталог', locale)
   const translatedAbout = await translateString('Про нас', locale)
   const translatedDelivery = await translateString('Доставка й Оплата', locale)
   const translatedContacts = await translateString('Контакти', locale)
+  const translatedPantone = await translateString('Кольори Pantone', locale)
   const translatedLogin = await translateString('Увійти', locale)
   const translatedLoginMobile = await translateString('Увійти до кабінету', locale)
 
-  // Передаем готовые тексты в клиентский навбар
   return (
     <NavbarClient 
       locale={locale}
@@ -23,6 +22,7 @@ export default async function NavbarServer({ locale }: NavbarServerProps) {
         about: translatedAbout,
         delivery: translatedDelivery,
         contacts: translatedContacts,
+        pantone: translatedPantone,
         login: translatedLogin,
         loginMobile: translatedLoginMobile
       }}

@@ -10,7 +10,6 @@ interface Props {
     params: Promise<{ id: string; locale: string }>
 }
 
-// Хелпер для перевода динамических полей товара из БД
 async function getTranslatedProduct(product: any, locale: string) {
     if (locale === 'uk') return product
 
@@ -18,7 +17,6 @@ async function getTranslatedProduct(product: any, locale: string) {
     const translatedDescription = await translateString(product.description, locale)
     const translatedCategory = await translateString(product.category, locale)
     
-    // Автоматически переводим массив ключевых слов из поля tags в БД
     const translatedTags = product.tags && Array.isArray(product.tags)
         ? await Promise.all(product.tags.map((tag: string) => translateString(tag, locale)))
         : []
@@ -32,7 +30,6 @@ async function getTranslatedProduct(product: any, locale: string) {
     }
 }
 
-// 1. Динамическая генерация мультиязычного SEO для поисковых роботов
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id, locale } = await params
     const product = await prisma.product.findUnique({ where: { id } })
@@ -45,12 +42,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const translated = await getTranslatedProduct(product, locale)
     const fallbackDesc = translated.description ? translated.description.slice(0, 100) : ''
     
-    // Формируем список ключевых слов из поля tags
     const keywordsString = translated.tags && translated.tags.length > 0 
         ? translated.tags.join(', ') 
         : ''
 
-    // Переводим шаблон описания
     const seoDescriptionTemplate = `Замовити ${translated.name} розміром ${translated.size}. Висока якість, оптові ціни, швидка доставка. ${fallbackDesc}`
     const finalDescription = await translateString(seoDescriptionTemplate, locale)
 
@@ -71,23 +66,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 }
 
-// 2. Серверный рендеринг страницы товара
 export default async function ProductPage({ params }: Props) {
     const { id, locale } = await params
 
     const product = await prisma.product.findUnique({
         where: { id },
-        include: { price: true, printOptions: true } // Обязательно подтягиваем связанные таблицы цен и печати
+        include: { price: true, printOptions: true }
     })
 
     if (!product) notFound()
 
-    // Автоматически переводим динамический контент товара из базы перед рендером
     const translatedProduct = await getTranslatedProduct(product, locale)
 
-    // ==========================================================
-    // ПЕРЕВОД ВСЕХ СТАТИЧЕСКИХ СТРОК ДЛЯ СТРАНИЦЫ И КАЛЬКУЛЯТОРА
-    // ==========================================================
     const backToCatalogText = await translateString('Назад до каталогу', locale)
 
     const configuratorTranslations = {
@@ -104,7 +94,6 @@ export default async function ProductPage({ params }: Props) {
         <main className="min-h-screen bg-zinc-50 text-zinc-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100 pt-28 pb-24 px-4 md:px-8 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
             <div className="max-w-6xl mx-auto">
 
-                {/* Кнопка назад — переведенный текст прилетает с сервера */}
                 <Link
                     href={`/${locale}/packs`}
                     className="inline-flex items-center gap-2 text-xs font-mono text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-200 uppercase tracking-wider mb-8 transition-colors group"
@@ -113,8 +102,8 @@ export default async function ProductPage({ params }: Props) {
                     {backToCatalogText}
                 </Link>
 
-                {/* Прокидываем переведенный продукт и объект со статическими переводами */}
                 <ProductConfigurator 
+                    locale={locale}
                     product={translatedProduct} 
                     translations={configuratorTranslations} 
                 />
