@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { translateProductsList, translateString } from '@/lib/translate-server'
 import CatalogFilters from '@/components/CatalogFilters'
-export const dynamic = 'force-static'
+export const revalidate = 3600
 
 interface Props {
     params: Promise<{ locale: string }> // Получаем текущий язык из URL

@@ -5,7 +5,12 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
-import { VirtuosoGrid } from 'react-virtuoso'
+import dynamic from 'next/dynamic'
+
+const ClientVirtuoso = dynamic(() => import('react-virtuoso').then(mod => mod.VirtuosoGrid), {
+    ssr: false,
+    loading: () => <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">Загрузка...</div>
+})
 
 const ProductGrid = memo(({ products }: { products: any[] }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
@@ -282,7 +287,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                         <div className="py-32 text-center text-zinc-400">{translations.noProductsText}</div>
                     ) : (
                         <>
-                            <VirtuosoGrid
+                            <ClientVirtuoso
                                 useWindowScroll
                                 totalCount={finalProducts.length}
                                 itemContent={(index) => (
