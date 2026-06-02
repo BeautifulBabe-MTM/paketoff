@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
 import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
+import { VirtuosoGrid } from 'react-virtuoso'
 
 const ProductGrid = memo(({ products }: { products: any[] }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
@@ -41,8 +42,6 @@ interface CatalogFiltersProps {
 
 export default function CatalogFilters({ initialProducts, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
-    const [page, setPage] = useState(1);
-    const ITEMS_PER_PAGE = 40;
 
     const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null)
     const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -54,10 +53,6 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
         size: false, color: false, density: false, bottom: false, handle: false, weight: false
     })
-
-    useEffect(() => {
-        setPage(1);
-    }, [selectedSubcat, selectedSizes, selectedColors, selectedDensities, selectedBottoms, selectedHandles, selectedWeights]);
 
     const { yesLabel, noLabel } = translations;
 
@@ -154,9 +149,7 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
         yesLabel, noLabel
     ]);
 
-    const deferredProducts = useDeferredValue(filteredProducts);
-    const displayedProducts = deferredProducts.slice(0, page * ITEMS_PER_PAGE);
-    const hasMore = displayedProducts.length < filteredProducts.length;
+    const finalProducts = useDeferredValue(filteredProducts);
 
     return (
         <>
@@ -285,21 +278,20 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                 </aside>
 
                 <main className="lg:col-span-3">
-                    {filteredProducts.length === 0 ? (
+                    {finalProducts.length === 0 ? (
                         <div className="py-32 text-center text-zinc-400">{translations.noProductsText}</div>
                     ) : (
                         <>
-                            <ProductGrid products={displayedProducts} />
-                            {hasMore && (
-                                <div className="flex justify-center mt-12">
-                                    <button
-                                        onClick={() => setPage(p => p + 1)}
-                                        className="px-8 py-3 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity"
-                                    >
-                                        Показати ще
-                                    </button>
-                                </div>
-                            )}
+                            <VirtuosoGrid
+                                useWindowScroll
+                                totalCount={finalProducts.length}
+                                itemContent={(index) => (
+                                    <div className="p-3">
+                                        <PackCard product={finalProducts[index]} />
+                                    </div>
+                                )}
+                                listClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10"
+                            />
                         </>
                     )}
                 </main>
