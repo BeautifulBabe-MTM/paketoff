@@ -31,7 +31,20 @@ export default async function PacksPage({ params, searchParams }: Props) {
 
     const [rawProducts, allProducts, totalCount] = await Promise.all([
         prisma.product.findMany({ where, take: 15, orderBy: { createdAt: 'desc' } }),
-        prisma.product.findMany({ where }),
+        prisma.product.findMany({
+            where,
+            select: {
+                id: true,
+                category: true,
+                subcategory: true,
+                size: true,
+                color: true,
+                density: true,
+                weight: true,
+                bottom: true,
+                handle: true
+            }
+        }),
         prisma.product.count({ where })
     ]);
 
@@ -70,7 +83,7 @@ export default async function PacksPage({ params, searchParams }: Props) {
                 <CatalogFilters
                     initialProducts={translatedProducts}
                     allAvailableProducts={allProducts}
-                    totalCount={await prisma.product.count({ where: category ? { category } : {} })}
+                    totalCount={totalCount}
                     categories={categoriesMapped}
                     currentCategory={category || null}
                     translations={filterTranslations}
