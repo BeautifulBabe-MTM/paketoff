@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect, memo } from 'react'
+import { useState, useMemo, useEffect, memo, useDeferredValue } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import PackCard from '@/components/PackCard'
-import { SlidersHorizontal, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
 
 const ProductGrid = memo(({ products }: { products: any[] }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
@@ -154,7 +154,8 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
         yesLabel, noLabel
     ]);
 
-    const displayedProducts = filteredProducts.slice(0, page * ITEMS_PER_PAGE);
+    const deferredProducts = useDeferredValue(filteredProducts);
+    const displayedProducts = deferredProducts.slice(0, page * ITEMS_PER_PAGE);
     const hasMore = displayedProducts.length < filteredProducts.length;
 
     return (
@@ -165,7 +166,6 @@ export default function CatalogFilters({ initialProducts, categories, currentCat
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                         B2B / B2C Production Database
                     </div>
-                    {/* Исправлено: Заголовок теперь переводится */}
                     <h1 className="text-4xl md:text-6xl font-black tracking-tight uppercase font-sans text-zinc-900 dark:text-white">
                         {translations.pageTitle}
                     </h1>
