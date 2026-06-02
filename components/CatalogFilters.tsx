@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface CatalogFiltersProps {
     initialProducts: any[]
+    allAvailableProducts: any[]
     totalCount: number
     categories: { id: string; label: string }[]
     currentCategory: string | null
@@ -33,7 +34,7 @@ interface CatalogFiltersProps {
     }
 }
 
-export default function CatalogFilters({ initialProducts, totalCount, categories, currentCategory, translations }: CatalogFiltersProps) {
+export default function CatalogFilters({ initialProducts, allAvailableProducts, totalCount, categories, currentCategory, translations }: CatalogFiltersProps) {
     const { locale } = useParams()
     const [products, setProducts] = useState(initialProducts)
     const [isPending, startTransition] = useTransition()
@@ -75,7 +76,7 @@ export default function CatalogFilters({ initialProducts, totalCount, categories
         const handles = new Set<string>()
         const weights = new Set<string>()
 
-        initialProducts.forEach(p => {
+        allAvailableProducts.forEach(p => {
             if (p.subcategory && p.subcategory.trim() !== '') subcats.add(p.subcategory.trim())
             if (p.size && p.size.trim() !== '') sizes.add(p.size.trim())
             if (p.color && p.color.trim() !== '') colors.add(p.color.trim())
@@ -100,7 +101,7 @@ export default function CatalogFilters({ initialProducts, totalCount, categories
             handles: Array.from(handles),
             weights: Array.from(weights),
         }
-    }, [initialProducts, translations])
+    }, [allAvailableProducts, translations])
 
     useMemo(() => {
         setSelectedSubcat(null)

@@ -27,18 +27,19 @@ export async function generateMetadata({ params, searchParams }: Props) {
 export default async function PacksPage({ params, searchParams }: Props) {
     const { locale } = await params
     const { category } = await searchParams
+    const where = category ? { category } : {}
 
-    const rawProducts = await prisma.product.findMany({
-        where: category ? { category } : {},
-        take: 15, 
-        orderBy: { createdAt: 'desc' },
-    });
+    const [rawProducts, allProducts, totalCount] = await Promise.all([
+        prisma.product.findMany({ where, take: 15, orderBy: { createdAt: 'desc' } }),
+        prisma.product.findMany({ where }),
+        prisma.product.count({ where })
+    ]);
 
-    const rawCategories = Array.from(new Set(rawProducts.map(p => p.category)));
+    const allCategories = Array.from(new Set(allProducts.map(p => p.category)));
 
     const [translatedProducts, categoriesMapped] = await Promise.all([
         translateProductsList(rawProducts, locale),
-        Promise.all(rawCategories.map(async (cat) => ({
+        Promise.all(allCategories.map(async (cat) => ({
             id: cat,
             label: locale === 'uk' ? cat : await translateString(cat, locale)
         })))
@@ -68,6 +69,7 @@ export default async function PacksPage({ params, searchParams }: Props) {
             <div className="max-w-7xl mx-auto space-y-8">
                 <CatalogFilters
                     initialProducts={translatedProducts}
+                    allAvailableProducts={allProducts}
                     totalCount={await prisma.product.count({ where: category ? { category } : {} })}
                     categories={categoriesMapped}
                     currentCategory={category || null}
