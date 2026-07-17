@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, User, ShoppingBag, Layers } from 'lucide-react'
+import { Menu, X, User, ShoppingBag, Layers, LogOut } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
 import LangSwitch from '@/components/LangSwitch'
+import { useSession, signOut } from 'next-auth/react'
 
 interface NavbarProps {
     locale: string
@@ -23,6 +24,11 @@ interface NavbarProps {
 export default function Navbar({ locale, translations }: NavbarProps) {
     const [isOpen, setIsOpen] = useState(false)
     const pathname = usePathname()
+    const { data: session, status, update } = useSession();
+
+    useEffect(() => {
+        update();
+    }, []);
 
     const navLinks = [
         { href: '/packs', label: translations.catalog },
@@ -37,26 +43,22 @@ export default function Navbar({ locale, translations }: NavbarProps) {
     const [cartCount, setCartCount] = useState<number>(0)
 
     useEffect(() => {
-        // Функция подсчета уникальных позиций (или суммы штук)
         const updateCount = () => {
             if (typeof window !== 'undefined') {
                 const cart = localStorage.getItem('cart')
                 const items = cart ? JSON.parse(cart) : []
-                // Либо items.length (кол-во строк), либо сумма всех тиражей
                 setCartCount(items.length)
             }
         }
 
-        // Считаем при первой загрузке клиента
         updateCount()
 
-        // Слушаем триггер из карточки товара
         window.addEventListener('cart-updated', updateCount)
         return () => window.removeEventListener('cart-updated', updateCount)
     }, [])
 
     return (
-        <nav className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/85 backdrop-blur-md dark:border-zinc-800/85 dark:bg-zinc-950/85 transition-colors duration-200">
+        <nav key={status} className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/85 backdrop-blur-md dark:border-zinc-800/85 dark:bg-zinc-950/85 transition-colors duration-200">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
 
@@ -95,10 +97,31 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                             )}
                         </Link>
 
-                        <Link href={`/${locale}/login`} className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all active:scale-95">
-                            <User className="h-3.5 w-3.5" />
-                            <span>{translations.login}</span>
-                        </Link>
+                        {status === 'authenticated' ? (
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    href={`/${locale}/profile`}
+                                    className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+                                >
+                                    <User className="h-3.5 w-3.5" />
+                                    <span>{session.user?.name || "Профіль"}</span>
+                                </Link>
+                                <button
+                                    onClick={() => signOut()}
+                                    className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <Link
+                                href={`/${locale}/login`}
+                                className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all active:scale-95"
+                            >
+                                <User className="h-3.5 w-3.5" />
+                                <span>{translations.login}</span>
+                            </Link>
+                        )}
 
                         <LangSwitch />
                     </div>
@@ -134,10 +157,36 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                         </Link>
                     ))}
                     <div className="pt-4 border-t border-zinc-200 dark:border-zinc-900 space-y-4">
-                        <Link href={`/${locale}/login`} onClick={() => setIsOpen(false)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 py-3 text-xs font-mono uppercase tracking-widest font-bold">
-                            <User className="h-4 w-4" />
-                            {translations.loginMobile}
-                        </Link>
+                        {status === 'authenticated' ? (
+                            // Если авторизован: кнопка профиля
+                            <div className="flex flex-col gap-2">
+                                <Link
+                                    href={`/${locale}/profile`}
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white py-3 text-xs font-mono uppercase tracking-widest font-bold"
+                                >
+                                    <User className="h-4 w-4" />
+                                    {session.user?.name || "Профіль"}
+                                </Link>
+                                <button
+                                    onClick={() => { signOut(); setIsOpen(false); }}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-3 text-xs font-mono uppercase tracking-widest"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Вийти
+                                </button>
+                            </div>
+                        ) : (
+                            // Если НЕ авторизован: кнопка входа
+                            <Link
+                                href={`/${locale}/login`}
+                                onClick={() => setIsOpen(false)}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 py-3 text-xs font-mono uppercase tracking-widest font-bold"
+                            >
+                                <User className="h-4 w-4" />
+                                {translations.loginMobile}
+                            </Link>
+                        )}
 
                         <div className="flex justify-center py-2 bg-zinc-50 dark:bg-zinc-900 rounded-xl">
                             <LangSwitch />

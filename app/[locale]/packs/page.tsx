@@ -6,7 +6,7 @@ import PackCardSkeleton from '@/components/PackCardSkeleton';
 export const revalidate = 3600
 
 interface Props {
-    params: Promise<{ locale: string }> // Получаем текущий язык из URL
+    params: Promise<{ locale: string }>
     searchParams: Promise<{ category?: string }>
 }
 
@@ -40,7 +40,7 @@ async function ProductList({ where, locale, category, initialTranslations, categ
             initialProducts={translatedProducts}
             allAvailableProducts={allProducts}
             totalCount={totalCount}
-            categories={categories} // <--- ВОТ ЭТО БЫЛО ПОТЕРЯНО
+            categories={categories}
             currentCategory={category || null}
             translations={initialTranslations}
         />
@@ -60,11 +60,11 @@ export default async function PacksPage({ params, searchParams }: Props) {
 
     const filterTranslations = {
         pageTitle: await translateString('Пакети та упаковка', locale),
-        allProductsBtn: await translateString('Усі види продукції', locale), // Исправлено на чистый укр
+        allProductsBtn: await translateString('Усі види продукції', locale),
         allSubcategoriesBtn: await translateString('Усі підкатегорії', locale),
         foundProductsLabel: await translateString('ЗНАЙДЕНО ТОВАРІВ:', locale),
         filterParamsTitle: await translateString('Параметри фільтрації', locale),
-        noProductsText: await translateString('Товарів не знайдено за вказаними параметрами', locale), // Исправлено на чистый укр
+        noProductsText: await translateString('Товарів не знайдено за вказаними параметрами', locale), 
         yesLabel: await translateString('Є', locale),
         noLabel: await translateString('Немає', locale),
         sections: {

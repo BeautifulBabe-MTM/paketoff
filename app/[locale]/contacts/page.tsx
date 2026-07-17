@@ -34,7 +34,7 @@ export default async function ContactsPage({ params }: Props) {
 
         <div className="p-4 rounded-xl bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-zinc-800/40 space-y-1">
           <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase">{addressLabel}</span>
-          <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300 font-sans">Київ, вул. Промислова, 4</div>
+          <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300 font-sans">Дніпро, вул. Юрія Кондратюка, 4</div>
         </div>
 
         <div className="p-4 rounded-xl bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-zinc-800/40 space-y-1">

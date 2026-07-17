@@ -4,6 +4,8 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import "./globals.css";
 import NavbarServer from '@/components/NavbarServer'
 import ProgressBar from '@/components/ProgressBar'
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -30,21 +32,23 @@ export default async function RootLayout({
   params,
 }: RootLayoutProps) {
   const { locale } = await params;
-
+  const session = await auth();
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
-        <ProgressBar />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme={false}
-        >
-          <NavbarServer locale={locale} />
-          {children}
-        </ThemeProvider>
+        <SessionProvider session={session}>
+          <ProgressBar />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+            enableColorScheme={false}
+          >
+            <NavbarServer locale={locale} />
+            {children}
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

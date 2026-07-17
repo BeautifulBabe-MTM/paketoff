@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from "next-auth/jwt";
 
 const locales = ['uk', 'en', 'de', 'fr', 'it']
 const defaultLocale = 'uk'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET
+  });
   const pathname = request.nextUrl.pathname
+
+  const isProfilePage = /\/[a-z]{2}\/profile/.test(pathname);
+  const isAuthPage = /\/[a-z]{2}\/(login|register)/.test(pathname);
+
+  if (isProfilePage && !token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  if (isAuthPage && token) {
+    // Редиректим на главную (или профиль)
+    return NextResponse.redirect(new URL('/', request.url));
+  }
 
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`

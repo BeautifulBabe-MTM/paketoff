@@ -190,7 +190,12 @@ export default function CatalogFilters({ initialProducts, allAvailableProducts, 
                     </h1>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
-                    <span>{translations.foundProductsLabel} <strong className="text-zinc-900 dark:text-white font-semibold">{filteredProducts.length}</strong></span>
+                    <span>
+                        {translations.foundProductsLabel}{' '}
+                        <strong className="text-zinc-900 dark:text-white font-semibold">
+                            {filteredProducts.length < totalCount ? `${filteredProducts.length} / ${totalCount}` : totalCount}
+                        </strong>
+                    </span>
                 </div>
             </header>
 

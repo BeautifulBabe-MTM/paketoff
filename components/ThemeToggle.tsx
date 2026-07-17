@@ -4,15 +4,30 @@ import { useEffect, useState } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  // Инициализируем состояние сразу из localStorage или дефолта
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme')
+      if (saved) return saved as 'light' | 'dark'
+      // Если в storage ничего нет, проверяем системную настройку
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return 'dark'
+  })
+
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // При монтировании проверяем, какой класс сейчас реально висит на html
-    const isCurrentlyDark = document.documentElement.classList.contains('dark')
-    setTheme(isCurrentlyDark ? 'dark' : 'light')
-    setMounted(false)
     setMounted(true)
+    
+    // Синхронизация: если вдруг класс на html изменился извне
+    const observer = new MutationObserver(() => {
+        const isDark = document.documentElement.classList.contains('dark')
+        setTheme(isDark ? 'dark' : 'light')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    
+    return () => observer.disconnect()
   }, [])
 
   if (!mounted) {
@@ -21,16 +36,19 @@ export default function ThemeToggle() {
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    
-    // 1. Сохраняем в локальное хранилище, чтобы выбор не слетал при F5
     localStorage.setItem('theme', newTheme)
     
-    // 2. Обновляем локальное состояние кнопки, чтобы иконка поменялась
+    // Применяем класс
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+
     setTheme(newTheme)
     
-    // 3. Стреляем событием на весь браузер, чтобы ThemeProvider мгновенно перекрасил сайт
-    const event = new CustomEvent('themeChanged', { detail: { theme: newTheme } })
-    window.dispatchEvent(event)
+    // Событие для остальных компонентов
+    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }))
   }
 
   const isDark = theme === 'dark'
