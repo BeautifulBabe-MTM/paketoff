@@ -157,8 +157,10 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                         </Link>
                     ))}
                     <div className="pt-4 border-t border-zinc-200 dark:border-zinc-900 space-y-4">
-                        {status === 'authenticated' ? (
-                            // Если авторизован: кнопка профиля
+                        {status === 'loading' ? (
+                            // Пока статус загружается, рисуем плейсхолдер или ничего
+                            <div className="w-full h-12 animate-pulse bg-zinc-100 dark:bg-zinc-800 rounded-xl" />
+                        ) : status === 'authenticated' ? (
                             <div className="flex flex-col gap-2">
                                 <Link
                                     href={`/${locale}/profile`}
@@ -177,7 +179,7 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                                 </button>
                             </div>
                         ) : (
-                            // Если НЕ авторизован: кнопка входа
+                            // И только если статус В ТОЧНОСТИ unauthenticated, показываем кнопку входа
                             <Link
                                 href={`/${locale}/login`}
                                 onClick={() => setIsOpen(false)}
