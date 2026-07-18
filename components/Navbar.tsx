@@ -26,8 +26,6 @@ export default function Navbar({ locale, translations }: NavbarProps) {
     const pathname = usePathname()
     const { data: session, status, update } = useSession();
 
-    if (status === 'loading') return null;
-
     useEffect(() => {
         update();
     }, []);

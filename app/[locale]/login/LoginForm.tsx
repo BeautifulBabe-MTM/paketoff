@@ -7,18 +7,23 @@ import { LoginSchema } from "@/lib/zod";
 import { loginAction } from "@/actions/auth";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+import Link from "next/link";
 
 type LoginInput = z.infer<typeof LoginSchema>;
 
-// Добавим интерфейс для типизации t, чтобы TypeScript не ругался
 interface LoginFormProps {
     t: {
         title: string;
         subtitle: string;
         email: string;
+        emailError: string;
         password: string;
+        passwordError: string;
         button: string;
         error: string;
+        haveAnAcc: string;
+        reg: string;
     };
 }
 
@@ -27,12 +32,17 @@ export default function LoginForm({ t }: LoginFormProps) {
     const pathname = usePathname();
     const locale = pathname.split('/')[1] || 'uk';
 
+    const schema = useMemo(() => z.object({
+        email: z.string().email({ message: t.emailError }),
+        password: z.string().min(6, { message: t.passwordError }),
+    }), [t.emailError, t.passwordError]);
+
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm<LoginInput>({
-        resolver: zodResolver(LoginSchema),
+        resolver: zodResolver(schema),
         defaultValues: { email: "", password: "" },
     });
 
@@ -40,7 +50,7 @@ export default function LoginForm({ t }: LoginFormProps) {
         setError(null);
         const result = await loginAction(data);
         if (result?.error) {
-            setError(t.error); // Используем перевод ошибки
+            setError(t.error);
             return;
         }
 
@@ -90,6 +100,16 @@ export default function LoginForm({ t }: LoginFormProps) {
                     >
                         {isSubmitting ? "..." : t.button}
                     </button>
+
+                    <div className="text-center text-sm">
+                        <span className="text-zinc-500">{t.haveAnAcc}</span>
+                        <Link
+                            href={`/${locale}/register`}
+                            className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline"
+                        >
+                            {t.reg}
+                        </Link>
+                    </div>
                 </form>
             </div>
         </div>

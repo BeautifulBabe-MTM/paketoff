@@ -5,12 +5,11 @@ import bcrypt from "bcryptjs";
 import { RegisterSchema } from "@/lib/zod";
 import { boolean } from "zod";
 
-export async function registerAction(prevState: any, formData: FormData) {
-    const data = Object.fromEntries(formData.entries());
+export async function registerAction(data: any) {
     const validatedFields = RegisterSchema.safeParse(data);
 
     if (!validatedFields.success) {
-        return { error: "Неправильний формат даних" };
+        return { error: "Validation failed" };
     }
 
     const { email, password, name } = validatedFields.data;
