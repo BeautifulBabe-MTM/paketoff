@@ -1,5 +1,6 @@
 import { translateString } from '@/lib/translate-server'
-import NavbarClient from './Navbar' // Импортируем визуальную часть
+import NavbarClient from './Navbar' 
+import { auth } from "@/lib/auth";
 
 interface NavbarServerProps {
   locale: string
@@ -13,10 +14,13 @@ export default async function NavbarServer({ locale }: NavbarServerProps) {
   const translatedPantone = await translateString('Кольори Pantone', locale)
   const translatedLogin = await translateString('Увійти', locale)
   const translatedLoginMobile = await translateString('Увійти до кабінету', locale)
+  
+  const session = await auth();
 
   return (
     <NavbarClient 
       locale={locale}
+      session={session}
       translations={{
         catalog: translatedCatalog,
         about: translatedAbout,

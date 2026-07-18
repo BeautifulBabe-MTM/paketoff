@@ -6,22 +6,28 @@ const locales = ['uk', 'en', 'de', 'fr', 'it']
 const defaultLocale = 'uk'
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET
-  });
-  const pathname = request.nextUrl.pathname
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/api/auth')) return NextResponse.next();
+
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
 
   const isProfilePage = /\/[a-z]{2}\/profile/.test(pathname);
   const isAuthPage = /\/[a-z]{2}\/(login|register)/.test(pathname);
 
+  const getLocale = (pathname: string) => {
+    const segments = pathname.split('/');
+    return locales.includes(segments[1]) ? segments[1] : defaultLocale;
+  };
+
   if (isProfilePage && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const locale = getLocale(pathname);
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.nextUrl.origin));
   }
 
   if (isAuthPage && token) {
-    // Редиректим на главную (или профиль)
-    return NextResponse.redirect(new URL('/', request.url));
+    const locale = getLocale(pathname);
+    return NextResponse.redirect(new URL(`/${locale}/profile`, request.nextUrl.origin));
   }
 
   const pathnameHasLocale = locales.some(

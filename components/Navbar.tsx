@@ -7,6 +7,8 @@ import { Menu, X, User, ShoppingBag, Layers, LogOut } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
 import LangSwitch from '@/components/LangSwitch'
 import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation';
+import { Session } from 'next-auth'
 
 interface NavbarProps {
     locale: string
@@ -18,17 +20,25 @@ interface NavbarProps {
         pantone: string
         login: string
         loginMobile: string
-    }
+    },
+    session: Session | null
 }
 
-export default function Navbar({ locale, translations }: NavbarProps) {
+export default function Navbar({ locale, translations, session: serverSession }: NavbarProps) {
     const [isOpen, setIsOpen] = useState(false)
     const pathname = usePathname()
-    const { data: session, status, update } = useSession();
+    const { data: clientSession, status } = useSession();
 
+    const session = clientSession || serverSession;
+    const isAuthenticated = status === 'authenticated' || !!serverSession;
+    const key = session?.user?.email || 'guest';
+
+    const router = useRouter();
     useEffect(() => {
-        update();
-    }, []);
+        if (status === 'authenticated') {
+            router.refresh();
+        }
+    }, [status]);
 
     const navLinks = [
         { href: '/packs', label: translations.catalog },
@@ -58,7 +68,7 @@ export default function Navbar({ locale, translations }: NavbarProps) {
     }, [])
 
     return (
-        <nav key={status} className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/85 backdrop-blur-md dark:border-zinc-800/85 dark:bg-zinc-950/85 transition-colors duration-200">
+        <nav key={key} className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/85 backdrop-blur-md dark:border-zinc-800/85 dark:bg-zinc-950/85 transition-colors duration-200">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
 
@@ -104,7 +114,7 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                                     className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
                                 >
                                     <User className="h-3.5 w-3.5" />
-                                    <span>{session.user?.name || "Профіль"}</span>
+                                    <span>{session?.user?.name || "Профіль"}</span>
                                 </Link>
                                 <button
                                     onClick={() => signOut()}
@@ -165,7 +175,7 @@ export default function Navbar({ locale, translations }: NavbarProps) {
                                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white py-3 text-xs font-mono uppercase tracking-widest font-bold"
                                 >
                                     <User className="h-4 w-4" />
-                                    {session.user?.name || "Профіль"}
+                                    {session?.user?.name || "Профіль"}
                                 </Link>
                                 <button
                                     onClick={() => { signOut(); setIsOpen(false); }}
