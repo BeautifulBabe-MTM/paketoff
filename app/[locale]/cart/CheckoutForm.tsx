@@ -74,7 +74,7 @@ export default function CheckoutForm({
             }),
             totalSum,
             currency: cartItems[0]?.currency || 'UAH',
-            locale // передаем локаль на бэкенд для писем/уведомлений
+            locale
         }
 
         try {
@@ -90,12 +90,10 @@ export default function CheckoutForm({
 
             const data = await res.json()
 
-            // ЕСЛИ ВЫБРАНА КАРТА: Бэкенд вернет { url: "https://checkout.stripe.com/..." }
+            // { url: "https://checkout.stripe.com/..." }
             if (formData.payment === 'card' && data.url) {
-                // Корзину НЕ очищаем, пока шлюз не подтвердит оплату (через Webhook)
                 window.location.href = data.url
             } else {
-                // ЕСЛИ ИНВОЙС: Бэкенд создает заказ, и мы сразу ведем на success страницу
                 saveCartItems([])
                 window.location.href = `/${locale}/cart/success?orderId=${data.orderId || ''}`
             }
@@ -108,7 +106,6 @@ export default function CheckoutForm({
         }
     }
 
-    // Тексты для сводки справа (чтобы не хардкодить UA)
     const yourOrderText = translations.yourOrderTitle || {
         en: 'Your order', de: 'Ihre Bestellung', fr: 'Votre commande', it: 'Il tuo ordine', uk: 'Ваше замовлення'
     }[locale] || 'Your order';

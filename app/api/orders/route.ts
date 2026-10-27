@@ -5,7 +5,6 @@ export async function POST(req: Request) {
     try {
         const body = await req.json()
         
-        // Лог в терминал для контроля входящих данных
         console.log('=== НОВЫЙ ЗАКАЗ PACKLAB ===', JSON.stringify(body, null, 2))
 
         const { client, shipping, paymentMethod, items, totalSum, currency, locale } = body
@@ -34,10 +33,10 @@ export async function POST(req: Request) {
                     country: shipping.country,
                     city: shipping.city,
                     address: shipping.address,
-                    zip: shipping.zip || '', // Для Украины может оставаться пустым
+                    zip: shipping.zip || '',
                 },
                 paymentMethod,
-                paymentStatus: 'PENDING', // По умолчанию ждём оплаты
+                paymentStatus: 'PENDING',
                 totalSum: Number(totalSum),
                 currency,
                 locale,
